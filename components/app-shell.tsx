@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { signOut } from "@/app/(app)/actions";
+import { AmbientBg } from "@/components/ambient-bg";
 
 interface AppShellProps {
   user: User;
@@ -21,8 +22,8 @@ interface AppShellProps {
 
 const EMAIL_FOLDERS = [
   { folder: "inbox",     label: "Inbox",     icon: Inbox },
-  { folder: "starred",   label: "Starred",   icon: Star,        color: "text-white/50" },
-  { folder: "important", label: "Important", icon: AlertCircle, color: "text-white/50" },
+  { folder: "starred",   label: "Starred",   icon: Star },
+  { folder: "important", label: "Important", icon: AlertCircle },
   { folder: "sent",      label: "Sent",      icon: Send },
   { folder: "drafts",    label: "Drafts",    icon: FileText },
   { folder: "archive",   label: "Archive",   icon: Archive },
@@ -48,7 +49,11 @@ export function AppShell({ user, children }: AppShellProps) {
   const isInboxSection = pathname.startsWith("/inbox");
 
   return (
-    <div className="flex h-screen overflow-hidden bg-black text-white">
+    <div className="flex h-screen overflow-hidden text-white" style={{ background: "#080810" }}>
+
+      {/* ── Ambient background ── */}
+      <AmbientBg />
+
       {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -58,24 +63,30 @@ export function AppShell({ user, children }: AppShellProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-40 bg-black/80 lg:hidden"
+            className="fixed inset-0 z-40 lg:hidden"
+            style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
             onClick={() => setSidebarOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[220px] flex-col",
-          "bg-black border-r border-white/[0.06]",
           "transition-transform duration-200 ease-out",
           "lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{
+          background: "rgba(8,8,16,0.85)",
+          backdropFilter: "blur(20px)",
+          borderRight: "1px solid rgba(201,169,110,0.08)",
+        }}
       >
         {/* Logo */}
-        <div className="flex h-24 items-center justify-between px-4 border-b border-white/[0.06]">
+        <div className="flex h-24 items-center justify-between px-4"
+          style={{ borderBottom: "1px solid rgba(201,169,110,0.07)" }}>
           <Link href="/inbox" className="flex items-center" onClick={() => setSidebarOpen(false)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="sekpriAI" className="h-16 w-auto object-contain" />
@@ -96,7 +107,7 @@ export function AppShell({ user, children }: AppShellProps) {
           <div className="mb-1">
             <button
               onClick={() => setFoldersExpanded((v) => !v)}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/20 hover:text-white/40 transition-colors"
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/20 hover:text-[#c9a96e]/50 transition-colors"
             >
               <span className="flex-1 text-left">Mail</span>
               <ChevronDown className={cn("h-3 w-3 transition-transform", foldersExpanded && "rotate-180")} />
@@ -120,15 +131,19 @@ export function AppShell({ user, children }: AppShellProps) {
                         href={`/inbox?folder=${f.folder}`}
                         onClick={() => setSidebarOpen(false)}
                         className={cn(
-                          "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-all duration-100",
+                          "relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-all duration-150",
                           isActive
-                            ? "bg-white/[0.07] text-white"
-                            : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                            ? "text-white"
+                            : "text-white/35 hover:text-white/65 hover:bg-white/[0.04]"
                         )}
+                        style={isActive ? {
+                          background: "linear-gradient(90deg, rgba(201,169,110,0.12) 0%, rgba(201,169,110,0.04) 100%)",
+                          borderLeft: "2px solid rgba(201,169,110,0.5)",
+                        } : { borderLeft: "2px solid transparent" }}
                       >
                         <Icon className={cn(
                           "h-3.5 w-3.5 flex-shrink-0",
-                          isActive ? "text-white" : "text-white/30"
+                          isActive ? "text-[#c9a96e]" : "text-white/25"
                         )} />
                         <span className="text-sm">{f.label}</span>
                       </Link>
@@ -140,11 +155,11 @@ export function AppShell({ user, children }: AppShellProps) {
           </div>
 
           {/* Divider */}
-          <div className="my-2 border-t border-white/[0.05]" />
+          <div className="my-2" style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(201,169,110,0.1), transparent)" }} />
 
           {/* Features section */}
           <div>
-            <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/20">
+            <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/15">
               Features
             </p>
             {TOP_NAV.map((item) => {
@@ -155,15 +170,19 @@ export function AppShell({ user, children }: AppShellProps) {
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-all duration-100",
+                    "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-all duration-150",
                     isActive
-                      ? "bg-white/[0.07] text-white"
-                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                      ? "text-white"
+                      : "text-white/35 hover:text-white/65 hover:bg-white/[0.04]"
                   )}
+                  style={isActive ? {
+                    background: "linear-gradient(90deg, rgba(201,169,110,0.12) 0%, rgba(201,169,110,0.04) 100%)",
+                    borderLeft: "2px solid rgba(201,169,110,0.5)",
+                  } : { borderLeft: "2px solid transparent" }}
                 >
                   <item.icon className={cn(
                     "h-3.5 w-3.5 flex-shrink-0",
-                    isActive ? "text-white" : "text-white/30"
+                    isActive ? "text-[#c9a96e]" : "text-white/25"
                   )} />
                   <span>{item.label}</span>
                 </Link>
@@ -173,18 +192,19 @@ export function AppShell({ user, children }: AppShellProps) {
         </nav>
 
         {/* User section */}
-        <div className="border-t border-white/[0.06] p-3">
-          <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-            <div className="flex-shrink-0 h-6 w-6 rounded-full bg-white/10 border border-white/10 flex items-center justify-center">
-              <span className="text-[10px] font-semibold text-white/60">
+        <div className="p-3" style={{ borderTop: "1px solid rgba(201,169,110,0.07)" }}>
+          <div className="flex items-center gap-2 rounded-lg px-2 py-1.5">
+            <div className="flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.3), rgba(201,169,110,0.1))", border: "1px solid rgba(201,169,110,0.2)" }}>
+              <span className="text-[10px] font-semibold text-[#c9a96e]">
                 {user.email?.[0]?.toUpperCase() ?? "U"}
               </span>
             </div>
-            <span className="flex-1 truncate text-xs text-white/30">{user.email}</span>
+            <span className="flex-1 truncate text-xs text-white/25">{user.email}</span>
             <form action={signOut}>
               <button
                 type="submit"
-                className="flex-shrink-0 rounded p-1 text-white/20 hover:text-white/60 transition-colors"
+                className="flex-shrink-0 rounded p-1 text-white/15 hover:text-white/50 transition-colors"
                 aria-label="Sign out"
               >
                 <LogOut className="h-3.5 w-3.5" />
@@ -194,10 +214,15 @@ export function AppShell({ user, children }: AppShellProps) {
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+      {/* ── Main content ── */}
+      <div className="relative z-10 flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Mobile top bar */}
-        <header className="flex h-20 flex-shrink-0 items-center gap-3 border-b border-white/[0.06] px-4 lg:hidden bg-black">
+        <header className="flex h-20 flex-shrink-0 items-center gap-3 px-4 lg:hidden"
+          style={{
+            background: "rgba(8,8,16,0.85)",
+            backdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(201,169,110,0.07)",
+          }}>
           <button
             onClick={() => setSidebarOpen(true)}
             className="rounded p-1.5 text-white/30 hover:text-white transition-colors"
@@ -214,9 +239,10 @@ export function AppShell({ user, children }: AppShellProps) {
         {/* Page content */}
         <main
           className={cn(
-            "flex-1 min-h-0 bg-black",
+            "flex-1 min-h-0",
             isFullHeight ? "overflow-hidden" : "overflow-y-auto p-4 md:p-6"
           )}
+          style={{ background: "transparent" }}
         >
           {children}
         </main>

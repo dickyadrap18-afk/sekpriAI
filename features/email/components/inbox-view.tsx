@@ -178,9 +178,15 @@ export function InboxView() {
     <div className="flex h-full">
       {/* Left panel: list */}
       <div className={cn(
-        "flex flex-col border-r border-white/[0.06] w-full lg:w-80 lg:flex-shrink-0",
+        "flex flex-col w-full lg:w-80 lg:flex-shrink-0",
         selectedId && "hidden lg:flex"
-      )}>
+      )}
+        style={{
+          background: "rgba(8,8,16,0.6)",
+          backdropFilter: "blur(16px)",
+          borderRight: "1px solid rgba(201,169,110,0.07)",
+        }}
+      >
         <InboxToolbar
           filters={activeFilters}
           onFiltersChange={handleFiltersChange}
@@ -209,7 +215,9 @@ export function InboxView() {
       </div>
 
       {/* Right panel: detail */}
-      <div className={cn("flex-1 flex flex-col", !selectedId && "hidden lg:flex")}>
+      <div className={cn("flex-1 flex flex-col", !selectedId && "hidden lg:flex")}
+        style={{ background: "rgba(8,8,16,0.4)", backdropFilter: "blur(12px)" }}
+      >
         <MessageDetail
           message={selectedMessage}
           loading={detailLoading}
