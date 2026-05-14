@@ -223,11 +223,11 @@ Phases follow `specs/009-implementation-timeline.md`:
 | 3     | Core email UI               | ✅ Done   |
 | 4     | Provider integration        | ✅ Done   |
 | 5     | AI core                     | ✅ Done   |
-| 6     | Memory and RAG              | ⬜ Next   |
-| 7     | Telegram and WhatsApp mock  | ⬜        |
-| 8     | Scheduler and approval      | ⬜        |
-| 9     | Testing                     | ⬜        |
-| 10    | Deployment and deliverables | ⬜        |
+| 6     | Memory and RAG              | ✅ Done   |
+| 7     | Telegram and WhatsApp mock  | ✅ Done   |
+| 8     | Scheduler and approval      | ✅ Done   |
+| 9     | Testing                     | ✅ Done   |
+| 10    | Deployment and deliverables | ✅ Done   |
 
 Phases are sequential at the level of acceptance criteria but tasks
 within a phase can be parallelized across feature modules.

@@ -105,12 +105,12 @@ within a few seconds; draft button produces a reasonable reply.
 attachments.
 
 Tasks:
-- [ ] Memory extraction prompt and background pass per email.
-- [ ] Memory page with Pending / Active / Rejected tabs.
-- [ ] Approval, edit, reject, delete flows.
-- [ ] PDF / TXT / DOCX text extraction in `features/rag/server/extract.ts`.
-- [ ] Chunker, embedder, and pgvector retrieval.
-- [ ] Wire RAG context into `draft-reply` and channel commands.
+- [x] Memory extraction prompt and background pass per email.
+- [x] Memory page with Pending / Active / Rejected tabs.
+- [x] Approval, edit, reject, delete flows.
+- [x] PDF / TXT / DOCX text extraction in `features/rag/server/extract.ts`.
+- [x] Chunker, embedder, and pgvector retrieval.
+- [x] Wire RAG context into `draft-reply` and channel commands.
 
 **Acceptance**: Memory items only become active after user approval;
 draft prompts include retrieved chunks when relevant.
@@ -120,11 +120,11 @@ draft prompts include retrieved chunks when relevant.
 **Goal**: command channels live.
 
 Tasks:
-- [ ] Create Telegram bot, set webhook to `/api/telegram/webhook/<secret>`.
-- [ ] Binding code generation and `/start <code>` flow.
-- [ ] Welcome message and command parser.
-- [ ] High-priority notification dispatch after AI processing.
-- [ ] WhatsApp mock chat UI and `/api/whatsapp/mock` endpoint.
+- [x] Create Telegram bot, set webhook to `/api/telegram/webhook/<secret>`.
+- [x] Binding code generation and `/start <code>` flow.
+- [x] Welcome message and command parser.
+- [x] High-priority notification dispatch after AI processing.
+- [x] WhatsApp mock chat UI and `/api/whatsapp/mock` endpoint.
 
 **Acceptance**: Real Telegram bot binds, sends welcome, executes commands,
 and delivers high-priority notifications. WhatsApp mock chat exchanges
@@ -135,11 +135,11 @@ work end to end without any real WhatsApp call.
 **Goal**: scheduled sending with human-in-the-loop safety.
 
 Tasks:
-- [ ] Approval service in `features/scheduler/server/approval.ts`.
-- [ ] Approval dialog UI shared by send and memory activation.
-- [ ] Schedule form in compose.
-- [ ] Vercel Cron worker `/api/scheduled/send` running every minute.
-- [ ] Cancel scheduled email flow.
+- [x] Approval service in `features/scheduler/server/approval.ts`.
+- [x] Approval dialog UI shared by send and memory activation.
+- [x] Schedule form in compose.
+- [x] Vercel Cron worker `/api/scheduled/send` running every minute.
+- [x] Cancel scheduled email flow.
 
 **Acceptance**: Scheduled emails only send when status is `approved` and
 `scheduled_for <= now()`. Sensitive categories require careful approval.
@@ -149,12 +149,12 @@ Tasks:
 **Goal**: automated test coverage matching `specs/008-testing-spec.md`.
 
 Tasks:
-- [ ] Vitest setup with TS path aliases.
-- [ ] Testing Library setup for component tests where useful.
-- [ ] Playwright setup with mobile + desktop projects.
-- [ ] Unit tests for normalizers, parsers, classifiers, crypto.
-- [ ] Integration tests for sync, send, memory, scheduler, telegram.
-- [ ] E2E tests for inbox, compose, AI, memory, channels, scheduler.
+- [x] Vitest setup with TS path aliases.
+- [x] Testing Library setup for component tests where useful.
+- [x] Playwright setup with mobile + desktop projects.
+- [x] Unit tests for normalizers, parsers, classifiers, crypto.
+- [x] Integration tests for sync, send, memory, scheduler, telegram.
+- [x] E2E tests for inbox, compose, AI, memory, channels, scheduler.
 
 **Acceptance**: All gates pass on CI: lint, typecheck, unit, integration,
 build, E2E.
@@ -164,13 +164,13 @@ build, E2E.
 **Goal**: live demo on Vercel.
 
 Tasks:
-- [ ] Create Vercel project linked to the repo.
-- [ ] Set all env vars from `specs/003-technical-spec.md` §7.
-- [ ] Configure OAuth redirect URIs (Gmail, Office 365).
-- [ ] Configure Telegram webhook URL.
-- [ ] Run full CI gates on the deploy branch.
-- [ ] Smoke-test on the live URL.
-- [ ] Finalize README and submission message.
+- [x] Create Vercel project linked to the repo.
+- [x] Set all env vars from `specs/003-technical-spec.md` §7.
+- [x] Configure OAuth redirect URIs (Gmail, Office 365).
+- [x] Configure Telegram webhook URL.
+- [x] Run full CI gates on the deploy branch.
+- [x] Smoke-test on the live URL.
+- [x] Finalize README and submission message.
 
 **Acceptance**: Live URL works end to end; all deliverables in
 `specs/008-testing-spec.md` §6 manual checklist pass on the live site.

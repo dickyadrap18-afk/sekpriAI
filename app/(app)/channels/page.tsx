@@ -1,13 +1,30 @@
+import { TelegramBinding } from "@/features/channels/telegram/components/telegram-binding";
+import { WhatsAppMock } from "@/features/channels/whatsapp/components/whatsapp-mock";
+
 export default function ChannelsPage() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8">
       <h1 className="text-xl font-semibold">Channels</h1>
-      <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-        <p>Connect Telegram or try the WhatsApp mock chat.</p>
-        <p className="text-sm mt-2">
-          Channels let you manage email via natural language commands.
+
+      {/* Telegram */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Telegram</h2>
+        <p className="text-sm text-muted-foreground">
+          Connect your Telegram account to receive high-priority notifications
+          and manage email via natural language commands.
         </p>
-      </div>
+        <TelegramBinding />
+      </section>
+
+      {/* WhatsApp Mock */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">WhatsApp (Demo)</h2>
+        <p className="text-sm text-muted-foreground">
+          This is a simulated WhatsApp chat to demonstrate future channel
+          expansion. No real WhatsApp API is used.
+        </p>
+        <WhatsAppMock />
+      </section>
     </div>
   );
 }
