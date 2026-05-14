@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -10,8 +11,6 @@ const signupSchema = z.object({
 });
 
 export async function signup(formData: FormData) {
-  const supabase = await createClient();
-
   const rawEmail = formData.get("email");
   const rawPassword = formData.get("password");
 
@@ -26,17 +25,18 @@ export async function signup(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(firstError)}`);
   }
 
+  const supabase = await createClient();
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
   });
 
   if (error) {
-    // Provide user-friendly error messages
     let message = error.message;
     if (message.includes("invalid")) {
       message = "This email address is not accepted. Please use a real email (e.g., Gmail).";
-    } else if (message.includes("already registered")) {
+    } else if (message.includes("already registered") || message.includes("already been registered")) {
       message = "An account with this email already exists. Try signing in instead.";
     }
     redirect(`/signup?error=${encodeURIComponent(message)}`);
@@ -50,5 +50,6 @@ export async function signup(formData: FormData) {
   }
 
   // If confirmation is disabled, user gets a session immediately
+  revalidatePath("/", "layout");
   redirect("/inbox");
 }

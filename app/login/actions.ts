@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -10,8 +11,6 @@ const loginSchema = z.object({
 });
 
 export async function login(formData: FormData) {
-  const supabase = await createClient();
-
   const rawEmail = formData.get("email");
   const rawPassword = formData.get("password");
 
@@ -26,13 +25,14 @@ export async function login(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(firstError)}`);
   }
 
+  const supabase = await createClient();
+
   const { error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
 
   if (error) {
-    // Provide user-friendly error messages
     let message = error.message;
     if (message.includes("Invalid login credentials")) {
       message = "Invalid email or password. Please check and try again.";
@@ -44,5 +44,6 @@ export async function login(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(message)}`);
   }
 
+  revalidatePath("/", "layout");
   redirect("/inbox");
 }

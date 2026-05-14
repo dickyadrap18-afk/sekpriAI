@@ -1,13 +1,52 @@
-import { signup } from "./actions";
-import Link from "next/link";
-import { SubmitButton } from "@/components/submit-button";
+"use client";
 
-export default async function SignupPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; message?: string }>;
-}) {
-  const params = await searchParams;
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+
+function SignupForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [error, setError] = useState(searchParams.get("error") || "");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Signup failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (data.needsConfirmation) {
+        router.push(`/login?message=${encodeURIComponent(data.message)}`);
+        return;
+      }
+
+      // Success — cookies are set, redirect to inbox
+      router.push("/inbox");
+      router.refresh();
+    } catch {
+      setError("Network error. Please check your connection.");
+      setLoading(false);
+    }
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
@@ -19,19 +58,13 @@ export default async function SignupPage({
           </p>
         </div>
 
-        {params.error && (
+        {error && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-            {decodeURIComponent(params.error)}
+            {error}
           </div>
         )}
 
-        {params.message && (
-          <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700" role="status">
-            {decodeURIComponent(params.message)}
-          </div>
-        )}
-
-        <form action={signup} method="POST" className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email
@@ -63,7 +96,13 @@ export default async function SignupPage({
             />
           </div>
 
-          <SubmitButton>Sign Up</SubmitButton>
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {loading ? "Creating account..." : "Sign Up"}
+          </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
@@ -74,5 +113,13 @@ export default async function SignupPage({
         </p>
       </div>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }
