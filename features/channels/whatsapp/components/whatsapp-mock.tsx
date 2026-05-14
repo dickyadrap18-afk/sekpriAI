@@ -11,6 +11,25 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+function FormattedTime({ date }: { date: Date }) {
+  const [formatted, setFormatted] = useState<string>("");
+
+  useEffect(() => {
+    setFormatted(
+      date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    );
+  }, [date]);
+
+  return (
+    <p className="text-[10px] text-gray-500 mt-1 text-right">
+      {formatted}
+    </p>
+  );
+}
+
 export function WhatsAppMock() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -106,12 +125,7 @@ export function WhatsAppMock() {
             )}
           >
             <p className="whitespace-pre-wrap">{msg.text}</p>
-            <p className="text-[10px] text-gray-500 mt-1 text-right">
-              {msg.timestamp.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
+            <FormattedTime date={msg.timestamp} />
           </div>
         ))}
         {loading && (
