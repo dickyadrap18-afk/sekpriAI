@@ -140,6 +140,7 @@ export interface SendMessageInput {
   inReplyToMessageId?: string;
   references?: string[];
   attachments?: { filename: string; mimeType: string; storagePath: string }[];
+  isAiGenerated?: boolean;  // When true: adds X-AI-Generated header and applies stricter content checks
 }
 
 export interface SendMessageResult {
@@ -211,6 +212,11 @@ clients directly.
 - **CSRF**: state-changing routes require an authenticated Supabase session
   cookie. Telegram webhook is authenticated by a secret path token.
 - **Input validation**: route handlers use `zod` schemas for request bodies.
+- **Email deliverability**: `lib/email/deliverability.ts` enforces content
+  scanning, sanitization, RFC-compliant headers, and rate limiting on every
+  outbound email. This is mandatory for AI-generated sends to prevent spam
+  classification and sender account suspension. See
+  `specs/006-provider-integration-spec.md §11` for the full specification.
 
 ## 7. Environment variables
 

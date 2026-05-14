@@ -205,6 +205,44 @@ and never branches on provider beyond that.
 - `zod` validates every state-changing request body.
 - Webhook URLs include a secret path segment.
 
+## 9a. Email Deliverability
+
+Deliverability is treated as a security and trust concern, not just a
+UX concern. AI-generated emails that land in spam damage user trust and
+can get the sender's account flagged or suspended.
+
+**Module**: `lib/email/deliverability.ts` — imported only by provider
+adapters, never by UI or feature layers.
+
+**Four enforcement layers applied before every send:**
+
+1. **Content scan** — blocks emails containing spam trigger phrases
+   (marketing language, pharmaceutical keywords, lottery phrases).
+   Warns on ALL CAPS, excessive punctuation, too many URLs.
+
+2. **Content sanitization** — strips AI writing artifacts: excessive
+   punctuation, zero-width characters, repeated whitespace, ALL CAPS
+   words longer than 8 characters.
+
+3. **RFC-compliant headers** — every outbound email includes:
+   `Message-ID`, `Date`, `MIME-Version`, `X-Priority: 3` (Normal),
+   `X-Mailer: sekpriAI/1.0`, `Auto-Submitted`, `Precedence: normal`,
+   and `X-AI-Generated: assisted` when AI drafted the content.
+
+4. **Rate limiting** — max 30 emails/hour per account (in-process).
+   Prevents volume spikes that trigger spam filters.
+
+**Plain text requirement**: every outbound email includes a `text/plain`
+part. HTML-only emails score higher on SpamAssassin and are rejected by
+many corporate mail servers.
+
+**AI prompt constraints**: `draft-reply` and `compose` prompts explicitly
+instruct the model to avoid spam trigger words, generic filler phrases,
+and formulaic sentence structure.
+
+See `specs/006-provider-integration-spec.md §11` for the full
+deliverability specification.
+
 ## 10. Scalability considerations
 
 The MVP runs on Vercel free tier and Supabase free tier. The architecture
