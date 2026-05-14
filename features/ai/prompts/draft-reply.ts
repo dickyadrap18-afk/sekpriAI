@@ -14,16 +14,27 @@ const outputSchema = z.object({
 
 export type DraftReplyOutput = z.infer<typeof outputSchema>;
 
-const USER_PROMPT = `Draft a reply to this email. Respond with JSON only:
-{
-  "subject": "Re: ...",
-  "body": "the reply text",
-  "tone": "professional/casual/formal",
-  "assumptions": "what you assumed to write this draft",
-  "needs_approval": true/false (true if the reply involves sensitive topics)
-}
+const USER_PROMPT = `Draft a reply to this email. Respond with JSON only.
 
-Use the context below to write a helpful, accurate reply. Do not invent facts.
+CRITICAL WRITING RULES to avoid spam filters:
+- Write naturally, like a real person — not a template or marketing email
+- Use conversational language appropriate to the original email's tone
+- Keep sentences varied in length — mix short and longer ones
+- NO excessive punctuation (!!!, ???), NO ALL CAPS words
+- NO spam trigger phrases: "click here", "act now", "limited time", "free", "guaranteed"
+- NO generic openers like "I hope this email finds you well" or "As per my last email"
+- Be specific and direct — reference actual content from the original email
+- Keep it concise — say what needs to be said, nothing more
+- End naturally — no "Best regards, [AI Assistant]" type signatures
+
+JSON schema:
+{
+  "subject": "Re: [original subject]",
+  "body": "the reply text — plain text only, no HTML",
+  "tone": "professional/casual/formal",
+  "assumptions": "brief note on what you assumed",
+  "needs_approval": true/false
+}
 
 Original email:
 From: {from}

@@ -8,6 +8,13 @@ import type {
   SendMessageResult,
 } from "../types";
 import { decrypt } from "@/lib/security/crypto";
+import {
+  checkDeliverability,
+  sanitizeEmailContent,
+  buildDeliverabilityHeaders,
+  generateMessageId,
+  checkRateLimit,
+} from "@/lib/email/deliverability";
 
 /**
  * IMAP/SMTP adapter for Yahoo, AOL, and custom IMAP providers.
@@ -131,9 +138,32 @@ export function createImapAdapter(account: EmailAccount): EmailProviderAdapter {
 
     async sendMessage(params: SendMessageInput): Promise<SendMessageResult> {
       const creds = getImapCredentials(account);
-      const nodemailer = await import("nodemailer");
 
-      // Port 465 = SSL (secure:true), port 587 = STARTTLS (secure:false + requireTLS:true)
+      // ── Rate limit ────────────────────────────────────────────────────
+      if (!checkRateLimit(account.id, 30)) {
+        throw new Error(
+          "Rate limit exceeded: max 30 emails/hour per account. " +
+          "This protects your account from spam flags."
+        );
+      }
+
+      // ── Sanitize content ──────────────────────────────────────────────
+      const cleanSubject = sanitizeEmailContent(params.subject);
+      const cleanBody = params.bodyText ? sanitizeEmailContent(params.bodyText) : undefined;
+
+      // ── Deliverability check ──────────────────────────────────────────
+      const check = checkDeliverability(cleanSubject, cleanBody || params.bodyHtml || "");
+      if (check.blocked) {
+        throw new Error(
+          `Email blocked — content flagged as spam: ${check.blockedReason}. ` +
+          `Please revise the content and try again.`
+        );
+      }
+      if (check.warnings.length > 0) {
+        console.warn(`[deliverability] score=${check.score} warnings:`, check.warnings);
+      }
+
+      const nodemailer = await import("nodemailer");
       const isSSL = creds.smtpPort === 465;
 
       const transport = nodemailer.createTransport({
@@ -142,32 +172,41 @@ export function createImapAdapter(account: EmailAccount): EmailProviderAdapter {
         secure: isSSL,
         requireTLS: !isSSL,
         auth: { user: creds.username, pass: creds.password },
-        tls: {
-          // Allow self-signed certs in dev; in prod Gmail/Outlook have valid certs
-          rejectUnauthorized: true,
-        },
+        tls: { rejectUnauthorized: true },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
       });
 
-      // Verify connection before sending
       try {
         await transport.verify();
       } catch (err) {
         throw new Error(
           `SMTP connection failed for ${creds.smtpHost}:${creds.smtpPort} — ` +
           `${err instanceof Error ? err.message : String(err)}. ` +
-          `For Gmail, make sure you are using an App Password, not your regular password.`
+          `For Gmail, make sure you are using an App Password.`
         );
       }
+
+      // ── Build deliverability headers ──────────────────────────────────
+      const messageId = generateMessageId(account.email_address);
+      const extraHeaders = buildDeliverabilityHeaders({
+        messageId,
+        fromEmail: account.email_address,
+        inReplyTo: params.inReplyToMessageId,
+        isAiGenerated: params.isAiGenerated,
+      });
 
       const info = await transport.sendMail({
         from: `"${account.display_name || account.email_address}" <${account.email_address}>`,
         to: params.to.join(", "),
         cc: params.cc?.join(", "),
-        subject: params.subject,
-        text: params.bodyText,
+        subject: cleanSubject,
+        // Always include plain text — HTML-only emails score higher for spam
+        text: cleanBody || (params.bodyHtml ? params.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : ""),
         html: params.bodyHtml,
         inReplyTo: params.inReplyToMessageId,
         references: params.references?.join(" "),
+        headers: extraHeaders,
       });
 
       return {

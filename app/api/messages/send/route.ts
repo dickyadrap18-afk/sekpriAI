@@ -68,6 +68,33 @@ export async function POST(request: NextRequest) {
       inReplyToMessageId: data.in_reply_to_message_id,
     });
 
+    // Save sent message to DB so it appears in Sent folder
+    // Done server-side so user_id is always correct (from auth session)
+    const { error: insertError } = await supabase.from("messages").insert({
+      user_id: user.id,
+      account_id: data.account_id,
+      provider: account.provider,
+      provider_message_id: (result as Record<string, unknown>)?.provider_message_id as string
+        ?? `sent-local-${Date.now()}`,
+      from_email: account.email_address,
+      from_name: account.display_name ?? account.email_address,
+      to_emails: data.to,
+      cc_emails: data.cc ?? [],
+      subject: data.subject,
+      body_text: data.body_text ?? "",
+      snippet: (data.body_text ?? "").slice(0, 200),
+      labels: ["SENT"],
+      is_read: true,
+      is_archived: false,
+      is_deleted: false,
+      received_at: new Date().toISOString(),
+    });
+
+    if (insertError) {
+      // Log but don't fail — email was sent, DB record is best-effort
+      console.error("[send] DB insert error:", insertError.message);
+    }
+
     console.log("[send] Success:", JSON.stringify(result));
     return NextResponse.json({ success: true, ...result });
   } catch (err) {

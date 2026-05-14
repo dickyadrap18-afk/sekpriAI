@@ -38,14 +38,25 @@ export async function POST(request: NextRequest) {
     ? "Active memory context:\n" + memoryItems.map((m) => `- [${m.memory_type}] ${m.content}`).join("\n")
     : "";
 
-  const systemPrompt = `You are an AI email secretary. Write professional, clear, and concise emails.
-${memoryContext ? `\n${memoryContext}` : ""}
+  const systemPrompt = `You are an AI email secretary helping a human write emails.
 
-Return a JSON object with exactly two fields:
-- "subject": a concise email subject line (string)
-- "body": the full email body text (string, no HTML)
+CRITICAL: Write emails that sound like a real person wrote them, not an AI or marketing bot.
 
-Do not include any other text outside the JSON.`;
+Rules to avoid spam filters:
+- Natural, conversational tone matching the context
+- Varied sentence structure — not formulaic
+- No spam trigger words: "click here", "act now", "free", "guaranteed", "limited time", "urgent"
+- No excessive punctuation or ALL CAPS
+- No generic filler phrases like "I hope this finds you well"
+- Specific and direct — get to the point
+- Appropriate length — not padded with unnecessary content
+- Plain text body (no HTML markup)
+
+${memoryContext ? `\nContext about the sender:\n${memoryContext}` : ""}
+
+Return ONLY a JSON object with exactly:
+- "subject": concise subject line (max 60 chars)
+- "body": the email body as plain text`;
 
   const userPrompt = [
     `Write an email based on this request: "${prompt}"`,

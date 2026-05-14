@@ -31,6 +31,7 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
   const [aiPrompt, setAiPrompt] = useState("");
   const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(prefill?.draft_id ?? null);
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
@@ -128,9 +129,10 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
 
   function handleSubmit(ev: React.FormEvent) {
     ev.preventDefault();
+    if (sending) return;
     if (validate()) {
-      // Cancel pending draft save
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+      setSending(true);
       onSend({ ...form, draft_id: draftId ?? undefined });
     }
   }
@@ -330,13 +332,16 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
 
               {/* Actions */}
               <div className="flex items-center gap-2 pt-1 border-t border-white/[0.05]">
-                <button type="submit"
-                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-all hover:scale-[1.02] active:scale-[0.98]"
+                <button type="submit" disabled={sending}
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
                   style={{ background: "linear-gradient(135deg, #e8d5b0 0%, #c9a96e 100%)" }}>
-                  <Send className="h-3.5 w-3.5" /> Send
+                  {sending
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending...</>
+                    : <><Send className="h-3.5 w-3.5" /> Send</>
+                  }
                 </button>
-                <button type="button" onClick={onClose}
-                  className="inline-flex items-center rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors">
+                <button type="button" onClick={onClose} disabled={sending}
+                  className="inline-flex items-center rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors disabled:opacity-40">
                   Cancel
                 </button>
               </div>

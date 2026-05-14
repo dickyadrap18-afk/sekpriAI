@@ -126,7 +126,6 @@ export function InboxView() {
   const handleSend = useCallback(async (data: ComposeFormData) => {
     const supabase = createClient();
 
-    // Find the account to get email address
     const account = accounts.find((a) => a.id === data.from_account_id);
     if (!account) {
       showToast("No account selected", "error");
@@ -154,14 +153,13 @@ export function InboxView() {
         return;
       }
 
-      showToast("Email sent successfully", "success");
-      setComposeOpen(false);
-
       // Delete draft if this was a draft being sent
       if (data.draft_id) {
         await supabase.from("messages").update({ is_deleted: true }).eq("id", data.draft_id);
       }
 
+      showToast("Email sent", "success");
+      setComposeOpen(false);
       refetch();
     } catch {
       showToast("Network error. Please try again.", "error");

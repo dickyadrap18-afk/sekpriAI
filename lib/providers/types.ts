@@ -43,6 +43,7 @@ export interface SendMessageInput {
   inReplyToMessageId?: string;
   references?: string[];
   attachments?: { filename: string; mimeType: string; storagePath: string }[];
+  isAiGenerated?: boolean;  // Flag for deliverability headers + content checks
 }
 
 export interface SendMessageResult {
