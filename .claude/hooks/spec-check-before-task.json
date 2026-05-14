@@ -1,0 +1,12 @@
+{
+  "name": "Read Spec Before Task",
+  "version": "1.0.0",
+  "description": "Before starting a spec task, remind the agent to read the relevant spec first.",
+  "when": {
+    "type": "preTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Before starting this task, read the relevant spec from specs/ folder. Check: 1) Which spec section does this task belong to? 2) What are the acceptance criteria? 3) What are the architectural boundaries? Do NOT proceed with implementation until you have read and understood the spec."
+  }
+}

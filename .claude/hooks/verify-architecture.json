@@ -1,0 +1,13 @@
+{
+  "name": "Verify Architecture Boundaries",
+  "version": "1.0.0",
+  "description": "Before writing to UI component files, remind the agent to check clean architecture boundaries. UI components must not import provider SDKs or LLM clients.",
+  "when": {
+    "type": "preToolUse",
+    "toolTypes": ["write"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Before writing this file, verify: 1) If this is a UI component (under components/ or features/*/components/), it must NOT import from lib/providers/*, features/ai/clients/*, or any provider SDK (googleapis, @microsoft/microsoft-graph-client, imapflow, nodemailer, telegram). 2) If this is a server file, it must use 'import server-only'. 3) No tokens or API keys in NEXT_PUBLIC_* variables. If the write violates these rules, refuse and explain why."
+  }
+}

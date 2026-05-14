@@ -1,0 +1,12 @@
+{
+  "name": "Build Validate on Agent Stop",
+  "version": "1.0.0",
+  "description": "When the agent finishes a task, run the full build validation pipeline to ensure nothing is broken.",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm run lint && npm run typecheck && npm run build"
+  }
+}

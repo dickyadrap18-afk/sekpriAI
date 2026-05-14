@@ -1,0 +1,12 @@
+{
+  "name": "Run Tests After Task Completion",
+  "version": "1.0.0",
+  "description": "After a spec task is marked complete, run the test suite to verify nothing regressed.",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm run test"
+  }
+}

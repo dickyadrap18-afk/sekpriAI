@@ -1,0 +1,13 @@
+{
+  "name": "Typecheck on Save",
+  "version": "1.0.0",
+  "description": "Run TypeScript compiler check after editing to catch type errors immediately.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["*.ts", "*.tsx"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npx tsc --noEmit"
+  }
+}

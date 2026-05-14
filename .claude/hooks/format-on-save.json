@@ -1,0 +1,13 @@
+{
+  "name": "Format on Save",
+  "version": "1.0.0",
+  "description": "Auto-format TypeScript and TSX files after editing to prevent lint failures in CI.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["*.ts", "*.tsx"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npx prettier --write ${file}"
+  }
+}
