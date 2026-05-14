@@ -187,13 +187,17 @@ export function MessageDetail({
 
   if (!msg) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-3">
-        <div className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-          <FileText className="h-7 w-7 text-primary/40" />
+      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-2xl border border-[#c9a96e]/15 bg-[#c9a96e]/[0.04] flex items-center justify-center">
+            <FileText className="h-7 w-7 text-[#c9a96e]/25" />
+          </div>
+          <div className="absolute -inset-4 rounded-3xl pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(201,169,110,0.05) 0%, transparent 70%)" }} />
         </div>
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground/60">Your AI secretary is ready</p>
-          <p className="text-xs text-muted-foreground mt-1">Select a message to read and reply</p>
+          <p className="text-sm font-medium text-white/40">Your secretary is ready</p>
+          <p className="text-xs text-white/20 mt-1">Select a message to read</p>
         </div>
       </div>
     );
@@ -208,15 +212,18 @@ export function MessageDetail({
       className="flex flex-1 flex-col overflow-hidden"
     >
       {/* Header toolbar */}
-      <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-3 py-2 flex-wrap">
-        <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors lg:hidden" aria-label="Back">
+      <div className="flex items-center gap-1.5 border-b border-white/[0.05] px-3 py-2 flex-wrap flex-shrink-0"
+        style={{ background: "linear-gradient(180deg, rgba(201,169,110,0.03) 0%, transparent 100%)" }}>
+        <button onClick={onBack}
+          className="rounded-lg p-1.5 hover:bg-white/[0.06] text-white/30 hover:text-white transition-colors lg:hidden"
+          aria-label="Back">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1" />
 
         {/* AI Draft */}
         <button onClick={handleAiDraft} disabled={aiDraftLoading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-xs font-medium text-violet-300 hover:bg-violet-500/20 disabled:opacity-50 transition-all"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#c9a96e]/25 bg-[#c9a96e]/[0.06] px-2.5 py-1.5 text-xs font-medium text-[#c9a96e]/80 hover:bg-[#c9a96e]/[0.12] hover:text-[#c9a96e] disabled:opacity-40 transition-all"
           title="Generate AI reply draft">
           {aiDraftLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenLine className="h-3.5 w-3.5" />}
           AI Draft
@@ -225,28 +232,40 @@ export function MessageDetail({
         {/* Analyze */}
         {!msg.ai_processed_at && (
           <button onClick={handleAnalyze} disabled={analyzeLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary/80 hover:bg-primary/20 disabled:opacity-50 transition-all"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-white/40 hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-40 transition-all"
             title="Run AI analysis">
             {analyzeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             Analyze
           </button>
         )}
 
+        <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
+
         <button onClick={() => openInline("reply")}
           className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
-            inlineMode === "reply" ? "bg-primary text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]" : "border border-white/[0.1] text-muted-foreground hover:text-foreground hover:bg-white/[0.06]")}>
+            inlineMode === "reply"
+              ? "bg-white text-black"
+              : "border border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.05]")}>
           <Reply className="h-3.5 w-3.5" /> Reply
         </button>
         <button onClick={() => openInline("forward")}
           className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
-            inlineMode === "forward" ? "bg-primary text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]" : "border border-white/[0.1] text-muted-foreground hover:text-foreground hover:bg-white/[0.06]")}>
+            inlineMode === "forward"
+              ? "bg-white text-black"
+              : "border border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.05]")}>
           <Forward className="h-3.5 w-3.5" /> Forward
         </button>
-        <div className="w-px h-4 bg-white/[0.08] mx-0.5" />
-        <button onClick={() => onArchive(msg.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/[0.08] hover:text-foreground transition-colors" aria-label="Archive" title="Archive">
+
+        <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
+
+        <button onClick={() => onArchive(msg.id)}
+          className="rounded-lg p-1.5 text-white/25 hover:bg-white/[0.06] hover:text-white/60 transition-colors"
+          aria-label="Archive">
           <Archive className="h-4 w-4" />
         </button>
-        <button onClick={() => onDelete(msg.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors" aria-label="Delete" title="Delete">
+        <button onClick={() => onDelete(msg.id)}
+          className="rounded-lg p-1.5 text-white/25 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+          aria-label="Delete">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
@@ -273,19 +292,17 @@ export function MessageDetail({
 
           {/* AI Summary */}
           {msg.ai_summary && (
-            <div className="relative rounded-xl overflow-hidden">
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/30 via-violet-500/20 to-primary/10 p-px">
-                <div className="h-full w-full rounded-xl bg-[#0a0a0a]" />
-              </div>
-              <div className="relative p-4 space-y-1.5">
+            <div className="relative rounded-xl overflow-hidden border border-[#c9a96e]/15"
+              style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.06) 0%, rgba(201,169,110,0.02) 100%)" }}>
+              <div className="p-4 space-y-1.5">
                 <div className="flex items-center gap-1.5">
-                  <Cpu className="h-3.5 w-3.5 text-primary/80" />
-                  <p className="text-[11px] font-semibold text-primary/80 uppercase tracking-widest">AI Summary</p>
+                  <Cpu className="h-3.5 w-3.5 text-[#c9a96e]/60" />
+                  <p className="text-[10px] font-semibold text-[#c9a96e]/60 uppercase tracking-[0.2em]">Secretary Summary</p>
                 </div>
-                <p className="text-sm text-foreground/85 leading-relaxed">{msg.ai_summary}</p>
+                <p className="text-sm text-white/75 leading-relaxed">{msg.ai_summary}</p>
                 {msg.ai_priority_reason && (
-                  <p className="text-xs text-muted-foreground/70 border-t border-white/[0.06] pt-1.5">
-                    Priority: {msg.ai_priority_reason}
+                  <p className="text-xs text-white/30 border-t border-white/[0.06] pt-1.5">
+                    {msg.ai_priority_reason}
                   </p>
                 )}
               </div>
@@ -295,9 +312,9 @@ export function MessageDetail({
           {/* Not yet analyzed */}
           {!msg.ai_processed_at && !analyzeLoading && (
             <button onClick={handleAnalyze}
-              className="w-full rounded-xl border border-dashed border-white/[0.1] p-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-primary/70 hover:bg-primary/5 transition-all text-center">
+              className="w-full rounded-xl border border-dashed border-[#c9a96e]/15 p-3 text-xs text-white/25 hover:border-[#c9a96e]/30 hover:text-[#c9a96e]/50 hover:bg-[#c9a96e]/[0.03] transition-all text-center">
               <FileText className="h-3.5 w-3.5 inline mr-1.5" />
-              Click to run AI analysis on this email
+              Run AI analysis on this email
             </button>
           )}
 
@@ -475,15 +492,15 @@ export function MessageDetail({
         {!inlineMode && (
           <div className="flex items-center gap-2 px-4 md:px-6 pb-6 flex-wrap">
             <button onClick={() => openInline("reply")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-colors">
               <Reply className="h-4 w-4" /> Reply
             </button>
             <button onClick={() => openInline("forward")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-colors">
               <Forward className="h-4 w-4" /> Forward
             </button>
             <button onClick={handleAiDraft} disabled={aiDraftLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-500/20 disabled:opacity-50 transition-all">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#c9a96e]/25 bg-[#c9a96e]/[0.06] px-4 py-2 text-sm font-medium text-[#c9a96e]/70 hover:bg-[#c9a96e]/[0.12] hover:text-[#c9a96e] disabled:opacity-40 transition-all">
               {aiDraftLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
               AI Draft
             </button>

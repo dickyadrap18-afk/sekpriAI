@@ -329,13 +329,14 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 pt-1 border-t border-white/[0.06]">
+              <div className="flex items-center gap-2 pt-1 border-t border-white/[0.05]">
                 <button type="submit"
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-all hover:shadow-[0_0_16px_rgba(99,102,241,0.4)]">
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ background: "linear-gradient(135deg, #e8d5b0 0%, #c9a96e 100%)" }}>
                   <Send className="h-3.5 w-3.5" /> Send
                 </button>
                 <button type="button" onClick={onClose}
-                  className="inline-flex items-center rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
+                  className="inline-flex items-center rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors">
                   Cancel
                 </button>
               </div>

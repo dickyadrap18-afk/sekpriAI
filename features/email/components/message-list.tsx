@@ -25,6 +25,24 @@ interface MessageListProps {
   onMoveTo: (id: string, folder: string) => void;
 }
 
+function SkeletonRow({ opacity }: { opacity: number }) {
+  return (
+    <div className="flex items-start gap-2.5 px-3 py-3 border-b border-white/[0.03]" style={{ opacity }}>
+      <div className="mt-1.5 w-2 flex-shrink-0">
+        <div className="h-1.5 w-1.5 rounded-full bg-white/[0.06]" />
+      </div>
+      <div className="flex-1 space-y-1.5">
+        <div className="flex justify-between gap-4">
+          <div className="h-3 rounded-md bg-white/[0.06] shimmer" style={{ width: `${40 + Math.random() * 30}%` }} />
+          <div className="h-3 w-10 rounded-md bg-white/[0.04] shimmer" />
+        </div>
+        <div className="h-2.5 rounded-md bg-white/[0.05] shimmer" style={{ width: `${55 + Math.random() * 25}%` }} />
+        <div className="h-2 rounded-md bg-white/[0.03] shimmer" style={{ width: `${30 + Math.random() * 30}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export function MessageList({
   messages, selectedId, onSelect, loading, error,
   total, page, onPageChange,
@@ -37,16 +55,9 @@ export function MessageList({
 
   if (loading) {
     return (
-      <div className="space-y-px p-2">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-lg px-3 py-3 space-y-2" style={{ opacity: 1 - i * 0.12 }}>
-            <div className="flex justify-between gap-4">
-              <div className="h-3 w-28 rounded-full bg-white/[0.06] animate-pulse" />
-              <div className="h-3 w-10 rounded-full bg-white/[0.04] animate-pulse" />
-            </div>
-            <div className="h-3 w-48 rounded-full bg-white/[0.05] animate-pulse" />
-            <div className="h-2.5 w-36 rounded-full bg-white/[0.03] animate-pulse" />
-          </div>
+      <div className="flex-1 overflow-hidden">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <SkeletonRow key={i} opacity={1 - i * 0.11} />
         ))}
       </div>
     );
@@ -54,12 +65,12 @@ export function MessageList({
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center gap-2">
-        <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
-          <span className="text-red-400 text-lg">!</span>
+      <div className="flex flex-col items-center justify-center p-8 text-center gap-3">
+        <div className="h-10 w-10 rounded-full border border-red-500/20 bg-red-500/[0.06] flex items-center justify-center">
+          <span className="text-red-400 text-sm font-bold">!</span>
         </div>
-        <p className="text-sm text-red-400">Failed to load messages</p>
-        <p className="text-xs text-muted-foreground">{error}</p>
+        <p className="text-sm text-red-400/80">Failed to load messages</p>
+        <p className="text-xs text-white/20">{error}</p>
       </div>
     );
   }
@@ -69,14 +80,18 @@ export function MessageList({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center p-10 text-center gap-3"
+        className="flex flex-col items-center justify-center p-10 text-center gap-4"
       >
-        <div className="h-12 w-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-          <Inbox className="h-5 w-5 text-primary/60" />
+        <div className="relative">
+          <div className="h-14 w-14 rounded-2xl border border-[#c9a96e]/15 bg-[#c9a96e]/[0.04] flex items-center justify-center">
+            <Inbox className="h-6 w-6 text-[#c9a96e]/30" />
+          </div>
+          <div className="absolute -inset-3 rounded-3xl"
+            style={{ background: "radial-gradient(circle, rgba(201,169,110,0.06) 0%, transparent 70%)" }} />
         </div>
         <div>
-          <p className="text-sm font-medium text-foreground/70">All clear</p>
-          <p className="text-xs text-muted-foreground mt-0.5">No messages here.</p>
+          <p className="text-sm font-medium text-white/50">All clear</p>
+          <p className="text-xs text-white/20 mt-0.5">No messages in this folder</p>
         </div>
       </motion.div>
     );
@@ -84,14 +99,13 @@ export function MessageList({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Message list */}
       <div className="flex-1 overflow-y-auto">
         {messages.map((msg, i) => (
           <motion.div
             key={msg.id}
-            initial={{ opacity: 0, y: 4 }}
+            initial={{ opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: Math.min(i * 0.025, 0.2), duration: 0.15 }}
+            transition={{ delay: Math.min(i * 0.02, 0.15), duration: 0.15 }}
           >
             <MessageListItemComponent
               message={msg}
@@ -110,7 +124,6 @@ export function MessageList({
         ))}
       </div>
 
-      {/* Drag-and-drop zones — appear when dragging */}
       <DragDropZones
         visible={draggingId !== null}
         onDrop={(action) => {
@@ -121,31 +134,27 @@ export function MessageList({
         }}
       />
 
-      {/* Pagination */}
       {total > PAGE_SIZE && (
-        <div className="flex items-center justify-between px-3 py-2 border-t border-white/[0.06] flex-shrink-0">
-          <span className="text-xs text-muted-foreground">
-            {start}–{end} of {total}
+        <div className="flex items-center justify-between px-3 py-2 border-t border-white/[0.05] flex-shrink-0"
+          style={{ background: "linear-gradient(0deg, rgba(201,169,110,0.02) 0%, transparent 100%)" }}>
+          <span className="text-[11px] text-white/25 tabular-nums">
+            {start}–{end} <span className="text-white/15">of {total}</span>
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button
               onClick={() => onPageChange(page - 1)}
               disabled={page === 0}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/[0.06] hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              aria-label="Previous page"
+              className="rounded-lg p-1.5 text-white/25 hover:bg-white/[0.05] hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <span className="text-xs text-muted-foreground px-1">
-              {page + 1}/{totalPages}
-            </span>
+            <span className="text-[11px] text-white/25 px-1.5 tabular-nums">{page + 1}/{totalPages}</span>
             <button
               onClick={() => onPageChange(page + 1)}
               disabled={page >= totalPages - 1}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/[0.06] hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              aria-label="Next page"
+              className="rounded-lg p-1.5 text-white/25 hover:bg-white/[0.05] hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>

@@ -66,99 +66,105 @@ export function MessageListItemComponent({
     <>
       <motion.div
         layout
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: isDragging ? 0.4 : 1, x: 0, scale: isDragging ? 0.98 : 1 }}
-        transition={{ duration: 0.2 }}
+        initial={{ opacity: 0, x: -6 }}
+        animate={{ opacity: isDragging ? 0.3 : 1, x: 0, scale: isDragging ? 0.98 : 1 }}
+        transition={{ duration: 0.18 }}
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onContextMenu={handleContextMenu}
-        className={cn(
-          "relative flex w-full items-start gap-2 px-3 py-2.5 text-left transition-all duration-150 cursor-grab active:cursor-grabbing select-none",
-          "border-b border-white/[0.04] last:border-0",
-          isDragging && "opacity-40",
-          isSelected
-            ? "bg-white/[0.08] border-l-2 border-l-white"
-            : cn(
-                "border-l-2 border-l-transparent",
-                isUnread
-                  ? "bg-white/[0.04] hover:bg-white/[0.06]"
-                  : "hover:bg-white/[0.02]"
-              ),
-        )}
         onClick={() => !isDragging && onSelect(message.id)}
-      >
-        {/* High priority left accent */}
-        {isHigh && !isSelected && (
-          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500/70 rounded-r" />
+        className={cn(
+          "group relative flex w-full items-start gap-2.5 px-3 py-3 text-left cursor-pointer select-none",
+          "border-b border-white/[0.04] last:border-0 transition-all duration-150",
+          isSelected
+            ? "bg-[#c9a96e]/[0.08]"
+            : isUnread
+              ? "hover:bg-white/[0.04]"
+              : "hover:bg-white/[0.02]",
         )}
+      >
+        {/* Left accent bar */}
+        <div className={cn(
+          "absolute left-0 top-0 bottom-0 w-[2px] rounded-r transition-all duration-200",
+          isSelected
+            ? "bg-gradient-to-b from-[#e8d5b0] to-[#c9a96e] opacity-100"
+            : isHigh
+              ? "bg-red-500/60 opacity-100"
+              : "opacity-0"
+        )} />
 
-        {/* Unread indicator — blue dot like Gmail */}
-        <div className="mt-1.5 flex-shrink-0 w-2 flex justify-center">
-          {isUnread && (
-            <div className={cn(
-              "h-2 w-2 rounded-full flex-shrink-0",
-              isHigh ? "bg-red-400 pulse-dot" : "bg-primary"
-            )} />
+        {/* Unread dot */}
+        <div className="mt-[5px] flex-shrink-0 w-2 flex justify-center">
+          {isUnread && !isSelected && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className={cn(
+                "h-1.5 w-1.5 rounded-full flex-shrink-0",
+                isHigh ? "bg-red-400 pulse-dot" : "bg-[#c9a96e]"
+              )}
+            />
           )}
         </div>
 
         {/* Content */}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          {/* Row 1: sender + date */}
           <div className="flex items-center justify-between gap-2">
-            {/* Sender — bold if unread */}
             <span className={cn(
-              "truncate text-sm leading-tight",
-              isUnread ? "font-bold text-white" : "font-normal text-white/70"
+              "truncate text-[13px] leading-tight",
+              isUnread ? "font-semibold text-white" : "font-normal text-white/60",
+              isSelected && "text-white"
             )}>
               {message.from_name || message.from_email}
             </span>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <span className={cn(
-                "text-[11px]",
-                isUnread ? "text-white/60 font-medium" : "text-white/30"
-              )}>
-                {formatDate(message.received_at)}
-              </span>
-            </div>
+            <span className={cn(
+              "text-[11px] flex-shrink-0 tabular-nums",
+              isUnread ? "text-white/50" : "text-white/25",
+              isSelected && "text-[#c9a96e]/60"
+            )}>
+              {formatDate(message.received_at)}
+            </span>
           </div>
 
-          {/* Subject — bold if unread */}
-          <div className="flex items-center gap-1.5 mt-0.5">
+          {/* Row 2: subject + badge */}
+          <div className="flex items-center gap-1.5">
             <span className={cn(
               "truncate text-xs leading-tight",
-              isUnread ? "font-semibold text-white/90" : "text-white/55"
+              isUnread ? "font-medium text-white/85" : "text-white/45",
+              isSelected && "text-white/80"
             )}>
               {message.subject || "(no subject)"}
             </span>
             <PriorityBadge priority={message.ai_priority} />
           </div>
 
-          {/* Snippet */}
+          {/* Row 3: snippet */}
           <p className={cn(
-            "mt-0.5 truncate text-xs",
-            isUnread ? "text-white/50" : "text-white/30"
+            "truncate text-[11px] leading-tight",
+            isUnread ? "text-white/35" : "text-white/20",
+            isSelected && "text-white/30"
           )}>
             {message.snippet}
           </p>
         </div>
 
-        {/* Star button */}
+        {/* Star */}
         <button
           onClick={(e) => { e.stopPropagation(); onStar(message.id); }}
           className={cn(
-            "flex-shrink-0 mt-1 rounded p-0.5 transition-colors",
+            "flex-shrink-0 mt-0.5 rounded p-0.5 transition-all",
             isStarred
-              ? "text-amber-400 hover:text-amber-300"
-              : "text-transparent hover:text-muted-foreground/40 group-hover:text-muted-foreground/30"
+              ? "text-[#c9a96e] opacity-100"
+              : "text-transparent group-hover:text-white/20 hover:!text-[#c9a96e]/60"
           )}
           aria-label={isStarred ? "Remove star" : "Star"}
         >
-          <Star className={cn("h-3.5 w-3.5", isStarred && "fill-amber-400")} />
+          <Star className={cn("h-3.5 w-3.5", isStarred && "fill-[#c9a96e]")} />
         </button>
       </motion.div>
 
-      {/* Context menu */}
       <AnimatePresence>
         {contextMenu && (
           <MessageContextMenu
