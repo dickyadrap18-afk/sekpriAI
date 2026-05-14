@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { runDraftReply } from "@/features/ai/prompts/draft-reply";
+import { retrieveContext, formatContext } from "@/features/rag/server/retrieve";
 
 /**
  * Generate an AI reply draft for a message.
- * Ref: specs/005-ai-agent-spec.md §3 (draft-reply)
+ * Uses RAG context (email + attachment chunks) and active memory.
+ * Ref: specs/005-ai-agent-spec.md §3 (draft-reply), §5 (RAG retrieval)
  */
 
 const schema = z.object({
@@ -43,17 +45,44 @@ export async function POST(request: NextRequest) {
     ? `${message.from_name} <${message.from_email}>`
     : message.from_email;
 
+  // Retrieve RAG context (email + attachment chunks)
+  let ragContext = "";
+  try {
+    const query = `${message.subject || ""} ${message.snippet || ""}`.trim();
+    if (query) {
+      const chunks = await retrieveContext(user.id, query, 6);
+      ragContext = formatContext(chunks);
+    }
+  } catch {
+    // RAG failure is non-fatal
+  }
+
+  // Retrieve active memory items
+  const { data: memoryItems } = await supabase
+    .from("memory_items")
+    .select("content, memory_type")
+    .eq("status", "active")
+    .limit(10);
+
+  const memoryContext = memoryItems?.length
+    ? "\nActive memory:\n" +
+      memoryItems.map((m) => `- [${m.memory_type}] ${m.content}`).join("\n")
+    : "";
+
+  const fullContext = [ragContext, memoryContext].filter(Boolean).join("\n\n");
+
   const draft = await runDraftReply({
     from,
     subject: message.subject || "(no subject)",
     body: message.body_text || message.snippet || "",
+    context: fullContext || undefined,
   });
 
   // Log the AI action
   await supabase.from("ai_actions").insert({
     user_id: user.id,
     feature: "draft",
-    input: { message_id: message.id },
+    input: { message_id: message.id, has_rag: !!ragContext, has_memory: !!memoryContext },
     output: draft,
     model: "default",
   });

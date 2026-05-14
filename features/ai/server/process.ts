@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { runSummarize } from "../prompts/summarize";
 import { runPriority } from "../prompts/priority";
 import { runRisk } from "../prompts/risk";
+import { extractMemoryFromMessage } from "@/features/memory/server/actions";
+import { indexContent } from "@/features/rag/server/index";
 import type { Message } from "@/lib/supabase/types";
 
 /**
@@ -73,6 +75,28 @@ export async function processMessage(message: Message): Promise<void> {
         model: "default",
       },
     ]);
+
+    // Extract memory candidates (stored as pending)
+    try {
+      await extractMemoryFromMessage(message);
+    } catch {
+      // Memory extraction failure is non-fatal
+    }
+
+    // Index email body into RAG for future retrieval
+    try {
+      const textToIndex = [subject, body].filter(Boolean).join("\n\n");
+      if (textToIndex.length > 50) {
+        await indexContent({
+          userId: message.user_id,
+          sourceType: "email",
+          sourceId: message.id,
+          text: textToIndex,
+        });
+      }
+    } catch {
+      // RAG indexing failure is non-fatal
+    }
   } catch (err) {
     // AI failure is non-fatal: message stays without AI fields
     console.error(
