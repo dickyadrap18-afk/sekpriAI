@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { embedSingle } from "./embed";
 
 /**
@@ -14,13 +14,6 @@ export interface RetrievalResult {
   source_type: string;
   source_id: string;
   similarity: number;
-}
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
 }
 
 export async function retrieveContext(

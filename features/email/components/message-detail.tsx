@@ -1,5 +1,6 @@
 "use client";
 
+import DOMPurify from "dompurify";
 import { ArrowLeft, Archive, Trash2, Reply, Forward } from "lucide-react";
 import { PriorityBadge } from "./priority-badge";
 import type { Message } from "../types";
@@ -145,7 +146,15 @@ export function MessageDetail({
         {/* Body */}
         <div className="prose prose-sm max-w-none">
           {message.body_html ? (
-            <div dangerouslySetInnerHTML={{ __html: message.body_html }} />
+            <div
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(message.body_html, {
+                  FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
+                  FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+                  ALLOW_DATA_ATTR: false,
+                }),
+              }}
+            />
           ) : (
             <pre className="whitespace-pre-wrap font-sans text-sm">
               {message.body_text}

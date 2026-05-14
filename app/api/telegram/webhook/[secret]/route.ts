@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { handleCommand, WELCOME_MESSAGE } from "@/features/channels/server/router";
 
 /**
@@ -9,13 +9,6 @@ import { handleCommand, WELCOME_MESSAGE } from "@/features/channels/server/route
  */
 
 const TELEGRAM_API = "https://api.telegram.org/bot";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 async function sendTelegramMessage(chatId: string, text: string) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;

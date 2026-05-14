@@ -23,6 +23,7 @@ export async function POST(
     .from("memory_items")
     .update({ status: "active", approved_at: new Date().toISOString() })
     .eq("id", id)
+    .eq("user_id", user.id)
     .eq("status", "pending");
 
   if (error) {

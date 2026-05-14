@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { createAdapter } from "@/lib/providers";
 import type { EmailAccount } from "@/lib/supabase/types";
 
@@ -10,13 +10,6 @@ import type { EmailAccount } from "@/lib/supabase/types";
  *
  * SAFETY: Emails only send when status='approved' AND scheduled_for <= now().
  */
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function flushDueScheduledEmails(): Promise<{
   sent: number;

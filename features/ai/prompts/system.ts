@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Global system prompt for sekpriAI.
  * Ref: specs/005-ai-agent-spec.md §2

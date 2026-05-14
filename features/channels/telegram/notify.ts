@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 
 /**
  * Send high-priority notification to a user's bound Telegram chat.
@@ -8,13 +8,6 @@ import { createClient } from "@supabase/supabase-js";
  */
 
 const TELEGRAM_API = "https://api.telegram.org/bot";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function notifyHighPriority(params: {
   userId: string;
@@ -49,7 +42,7 @@ export async function notifyHighPriority(params: {
 
   if (existing) return false;
 
-  // Send notification
+  // Send notification (plain text to avoid HTML injection from email content)
   const text = `🔴 High priority email\nFrom: ${params.from}\nSubject: ${params.subject}\n\n${params.summary}`;
 
   const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
@@ -58,7 +51,6 @@ export async function notifyHighPriority(params: {
     body: JSON.stringify({
       chat_id: binding.telegram_chat_id,
       text,
-      parse_mode: "HTML",
     }),
   });
 

@@ -1,15 +1,8 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { runExtractMemory } from "@/features/ai/prompts/extract-memory";
 import type { Message } from "@/lib/supabase/types";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 /**
  * Extract memory candidates from a message and store as pending.

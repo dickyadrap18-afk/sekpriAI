@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { showToast } from "@/components/toast";
 import { MessageList } from "./message-list";
 import { MessageDetail } from "./message-detail";
 import { AccountSwitcher } from "./account-switcher";
@@ -68,11 +69,11 @@ export function InboxView() {
   }, []);
 
   const handleSend = useCallback(
-    async (data: ComposeFormData) => {
+    async (_data: ComposeFormData) => {
       // Phase 4 will implement actual sending via provider adapters.
-      // For now, show confirmation that approval is required.
-      alert(
-        "Send requires explicit approval. This will be implemented in Phase 4 (Provider Integration) and Phase 8 (Scheduler & Approval)."
+      showToast(
+        "Send requires explicit approval. Provider integration handles actual delivery.",
+        "info"
       );
       setComposeOpen(false);
     },

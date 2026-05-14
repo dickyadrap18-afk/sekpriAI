@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { escapePostgrestLike } from "@/lib/utils/escape-postgrest";
 import type { MessageListItem, InboxFilters } from "../types";
 
 export function useInbox(filters: InboxFilters) {
@@ -28,8 +29,9 @@ export function useInbox(filters: InboxFilters) {
     }
 
     if (filters.search) {
+      const escaped = escapePostgrestLike(filters.search);
       query = query.or(
-        `subject.ilike.%${filters.search}%,from_email.ilike.%${filters.search}%,from_name.ilike.%${filters.search}%,snippet.ilike.%${filters.search}%`
+        `subject.ilike.%${escaped}%,from_email.ilike.%${escaped}%,from_name.ilike.%${escaped}%,snippet.ilike.%${escaped}%`
       );
     }
 

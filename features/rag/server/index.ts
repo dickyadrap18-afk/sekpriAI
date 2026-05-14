@@ -1,21 +1,9 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { chunkText } from "./chunk";
 import { embedTexts } from "./embed";
 import type { RAGSourceType } from "@/lib/supabase/types";
-
-/**
- * Index content into the RAG pipeline: extract → chunk → embed → store.
- * Ref: specs/005-ai-agent-spec.md §5
- */
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function indexContent(params: {
   userId: string;

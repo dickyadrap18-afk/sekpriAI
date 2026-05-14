@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { runSummarize } from "../prompts/summarize";
 import { runPriority } from "../prompts/priority";
 import { runRisk } from "../prompts/risk";
@@ -14,13 +14,6 @@ import type { Message } from "@/lib/supabase/types";
  * Logs to ai_actions.
  * Ref: specs/005-ai-agent-spec.md §4
  */
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function processMessage(message: Message): Promise<void> {
   const supabase = getServiceClient();

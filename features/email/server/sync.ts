@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { createAdapter } from "@/lib/providers";
 import { processUnprocessedMessages } from "@/features/ai/server/process";
 import type { EmailAccount } from "@/lib/supabase/types";
@@ -11,13 +11,6 @@ import type { NormalizedMessage } from "@/lib/providers/types";
  * Uses service role client to upsert messages for any user.
  * Ref: specs/006-provider-integration-spec.md §5
  */
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function syncAccount(account: EmailAccount): Promise<number> {
   const adapter = createAdapter(account);

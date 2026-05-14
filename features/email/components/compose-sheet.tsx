@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Send, Clock } from "lucide-react";
 import type { ComposeFormData, ComposeMode } from "../types";
-import type { EmailAccount } from "@/lib/supabase/types";
+import type { EmailAccount } from "../types";
 
 interface ComposeSheetProps {
   open: boolean;
@@ -32,6 +32,30 @@ export function ComposeSheet({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // UX-05: Sync form when prefill/mode changes
+  useEffect(() => {
+    if (open && prefill) {
+      setForm({
+        from_account_id: prefill.from_account_id || accounts[0]?.id || "",
+        to: prefill.to || "",
+        cc: prefill.cc || "",
+        subject: prefill.subject || "",
+        body: prefill.body || "",
+        in_reply_to_message_id: prefill.in_reply_to_message_id,
+      });
+    }
+  }, [open, prefill, mode, accounts]);
+
+  // UX-01: Escape key to close
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   function validate(): boolean {
@@ -55,7 +79,7 @@ export function ComposeSheet({
     mode === "reply" ? "Reply" : mode === "forward" ? "Forward" : "New Message";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="compose-title">
       {/* Overlay */}
       <div
         className="fixed inset-0 bg-black/50"
@@ -66,7 +90,7 @@ export function ComposeSheet({
       <div className="relative z-50 w-full max-w-lg rounded-t-lg sm:rounded-lg border bg-background shadow-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <h3 id="compose-title" className="text-sm font-semibold">{title}</h3>
           <button
             onClick={onClose}
             className="rounded-md p-1 hover:bg-accent"

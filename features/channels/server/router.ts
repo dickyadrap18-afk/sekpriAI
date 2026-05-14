@@ -1,7 +1,8 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { runParseChannelIntent } from "@/features/ai/prompts/parse-channel-intent";
+import { escapePostgrestLike } from "@/lib/utils/escape-postgrest";
 import type { ChannelIntent } from "@/features/ai/prompts/parse-channel-intent";
 
 /**
@@ -21,13 +22,6 @@ Try:
 - Send the approved draft
 
 I will ask for confirmation before sending sensitive emails.`;
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function handleCommand(
   userId: string,
@@ -82,11 +76,12 @@ export async function handleCommand(
 
     case "search": {
       const query = intent.target || command;
+      const escaped = escapePostgrestLike(query);
       const { data: msgs } = await supabase
         .from("messages")
         .select("from_name, from_email, subject, snippet")
         .eq("user_id", userId)
-        .or(`subject.ilike.%${query}%,snippet.ilike.%${query}%`)
+        .or(`subject.ilike.%${escaped}%,snippet.ilike.%${escaped}%`)
         .order("received_at", { ascending: false })
         .limit(5);
 

@@ -18,7 +18,8 @@ export async function POST(
   const { error } = await supabase
     .from("memory_items")
     .update({ status: "deleted" })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });

@@ -25,13 +25,14 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
   }, [value]);
 
   return (
-    <div className="relative">
+    <div className="relative" role="search">
       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <input
         type="text"
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         placeholder="Search emails..."
+        aria-label="Search emails"
         className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-8 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       {local && (
