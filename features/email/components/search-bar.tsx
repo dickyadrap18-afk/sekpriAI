@@ -33,7 +33,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
         onChange={(e) => setLocal(e.target.value)}
         placeholder="Search emails..."
         aria-label="Search emails"
-        className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-8 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-9 w-full rounded-lg border border-white/[0.1] bg-white/[0.04] pl-9 pr-8 py-1 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
       />
       {local && (
         <button

@@ -16,41 +16,83 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --primary: #0f172a;
-  --primary-foreground: #f8fafc;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0f172a;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-}
+  color-scheme: dark;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f8fafc;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --accent: #1e293b;
-    --accent-foreground: #f8fafc;
-    --primary: #f8fafc;
-    --primary-foreground: #0f172a;
-    --border: #1e293b;
-    --input: #1e293b;
-    --ring: #f8fafc;
-  }
+  /* Core palette — pure black base like agentmail.to */
+  --background:        #000000;
+  --foreground:        #f0f0f0;
+  --muted:             #0a0a0a;
+  --muted-foreground:  #999999;
+  --accent:            #111111;
+  --accent-foreground: #f0f0f0;
+  --primary:           #f0f0f0;
+  --primary-foreground:#000000;
+  --border:            #1a1a1a;
+  --input:             #0d0d0d;
+  --ring:              #ffffff40;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Design tokens */
+  --glass-bg:     rgba(255,255,255,0.03);
+  --glass-border: rgba(255,255,255,0.07);
+  --glass-blur:   blur(12px);
+  --sidebar-width: 220px;
 }
 
 body {
   font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Reusable input base style */
+/* Thin scrollbar */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #333; }
+
+/* Glass utility */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+/* Input base */
 .input-base {
-  @apply flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  @apply flex h-9 w-full rounded-md border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-1 text-sm text-foreground placeholder:text-[#444] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 transition-colors;
+}
+
+/* Subtle dot grid background — agentmail style */
+.bg-grid {
+  background-image: radial-gradient(circle, #ffffff08 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Subtle mesh for auth pages */
+.bg-mesh {
+  background-image:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 70%);
+}
+
+/* Horizontal line separator with fade */
+.line-fade {
+  background: linear-gradient(to right, transparent, #ffffff15, transparent);
+  height: 1px;
+  border: none;
+}
+
+/* Pulse dot for unread */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* Tag/badge base */
+.tag {
+  @apply inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-0.5 text-[11px] font-medium tracking-wide text-white/50;
 }

@@ -14,11 +14,16 @@ async function sendTelegramMessage(chatId: string, text: string) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) return;
 
-  await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
+  const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text }),
   });
+
+  // Log silently if Telegram rejects (e.g. user blocked bot)
+  if (!res.ok) {
+    console.error(`[telegram] sendMessage failed: ${res.status} ${await res.text()}`);
+  }
 }
 
 export async function POST(
@@ -41,6 +46,7 @@ export async function POST(
 
   const chatId = String(message.chat.id);
   const telegramUserId = String(message.from?.id || "");
+  const firstName = message.from?.first_name || "";
   const text = message.text.trim();
   const supabase = getServiceClient();
 
@@ -49,7 +55,10 @@ export async function POST(
     const bindingCode = text.replace("/start", "").trim();
 
     if (!bindingCode) {
-      await sendTelegramMessage(chatId, "Please use the binding code from the app. Example: /start ABC12345");
+      await sendTelegramMessage(
+        chatId,
+        `Hey${firstName ? ` ${firstName}` : ""}! 👋 To connect your sekpriAI account, open the app and go to Settings → Channels. You'll get a binding code to use here.\n\nExample: /start ABC12345`
+      );
       return NextResponse.json({ ok: true });
     }
 
@@ -62,7 +71,10 @@ export async function POST(
       .single();
 
     if (!binding) {
-      await sendTelegramMessage(chatId, "Invalid or expired binding code. Please generate a new one from the app.");
+      await sendTelegramMessage(
+        chatId,
+        "That code doesn't look right — it may have expired or already been used. Head back to the app to generate a fresh one."
+      );
       return NextResponse.json({ ok: true });
     }
 
@@ -76,7 +88,8 @@ export async function POST(
       })
       .eq("id", binding.id);
 
-    await sendTelegramMessage(chatId, WELCOME_MESSAGE);
+    const greeting = firstName ? `You're all set, ${firstName}!\n\n` : "You're all set!\n\n";
+    await sendTelegramMessage(chatId, greeting + WELCOME_MESSAGE);
     return NextResponse.json({ ok: true });
   }
 
@@ -89,7 +102,10 @@ export async function POST(
     .single();
 
   if (!binding) {
-    await sendTelegramMessage(chatId, "You are not connected to sekpriAI. Use /start <code> to connect.");
+    await sendTelegramMessage(
+      chatId,
+      "It looks like this Telegram account isn't connected to sekpriAI yet. Open the app and use /start <code> to link your account."
+    );
     return NextResponse.json({ ok: true });
   }
 
@@ -99,3 +115,4 @@ export async function POST(
 
   return NextResponse.json({ ok: true });
 }
+

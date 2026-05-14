@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -16,5 +17,9 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <AppShell user={user}>{children}</AppShell>;
+  return (
+    <Suspense>
+      <AppShell user={user}>{children}</AppShell>
+    </Suspense>
+  );
 }

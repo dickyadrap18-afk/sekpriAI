@@ -3,12 +3,12 @@ import { WhatsAppMock } from "@/features/channels/whatsapp/components/whatsapp-m
 
 export default function ChannelsPage() {
   return (
-    <div className="flex flex-col gap-8">
+    <div className="max-w-2xl mx-auto space-y-8">
       <h1 className="text-xl font-semibold">Channels</h1>
 
       {/* Telegram */}
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Telegram</h2>
+        <h2 className="text-base font-medium">Telegram</h2>
         <p className="text-sm text-muted-foreground">
           Connect your Telegram account to receive high-priority notifications
           and manage email via natural language commands.
@@ -18,7 +18,7 @@ export default function ChannelsPage() {
 
       {/* WhatsApp Mock */}
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">WhatsApp (Demo)</h2>
+        <h2 className="text-base font-medium">WhatsApp (Demo)</h2>
         <p className="text-sm text-muted-foreground">
           This is a simulated WhatsApp chat to demonstrate future channel
           expansion. No real WhatsApp API is used.

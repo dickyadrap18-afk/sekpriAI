@@ -41,26 +41,31 @@ export async function POST(request: NextRequest) {
 
   const { data } = parsed;
 
-  const { error } = await supabase.from("email_accounts").insert({
-    user_id: user.id,
-    provider: "imap",
-    email_address: data.email_address,
-    display_name: data.display_name || data.email_address,
-    imap_host: data.imap_host,
-    imap_port: data.imap_port,
-    smtp_host: data.smtp_host,
-    smtp_port: data.smtp_port,
-    imap_username: data.username,
-    imap_password_encrypted: encrypt(data.password),
-    sync_status: "idle",
-  });
+  const { data: inserted, error } = await supabase
+    .from("email_accounts")
+    .insert({
+      user_id: user.id,
+      provider: "imap",
+      email_address: data.email_address,
+      display_name: data.display_name || data.email_address,
+      imap_host: data.imap_host,
+      imap_port: data.imap_port,
+      smtp_host: data.smtp_host,
+      smtp_port: data.smtp_port,
+      imap_username: data.username,
+      imap_password_encrypted: encrypt(data.password),
+      sync_status: "idle",
+    })
+    .select("id, provider, email_address, display_name, sync_status, last_synced_at, created_at")
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
+    console.error("Failed to save account:", error);
     return NextResponse.json(
       { error: "Failed to save account" },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, account: inserted });
 }

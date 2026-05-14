@@ -8,20 +8,39 @@ import type { ChannelIntent } from "@/features/ai/prompts/parse-channel-intent";
 /**
  * Route a parsed intent to the correct handler and return a text response.
  * Ref: specs/007-telegram-whatsapp-spec.md §6
+ *
+ * Tone: warm, concise, personal secretary — not a chatbot or system message.
+ * - Use first person ("I've checked...", "Here's what I found...")
+ * - Avoid robotic phrases ("No messages found", "Feature available in app")
+ * - Use light formatting with emoji sparingly for scannability
+ * - Mirror the user's language (Indonesian if they write in Indonesian)
  */
 
-const WELCOME_MESSAGE = `Welcome to sekpriAI.
+export const WELCOME_MESSAGE = `Hey! I'm your sekpriAI assistant 👋
 
-I am your AI email secretary. I can notify you about important emails, summarize threads, draft replies, and help you send or schedule emails after your approval.
+I keep an eye on your inbox and help you stay on top of things. Here's what I can do for you:
 
-Try:
-- Summarize my latest email
-- Draft a reply to Sarah
-- What urgent emails did I receive today?
-- Schedule this reply for tomorrow morning
-- Send the approved draft
+📬 *Summarize* — "What's my latest email?"
+⚡ *Urgent* — "Any important emails today?"
+🔍 *Search* — "Find emails about the contract"
+✍️ *Draft* — "Draft a reply to Sarah"
+📅 *Schedule* — "Schedule this reply for tomorrow morning"
+✅ *Send* — "Send the approved draft"
 
-I will ask for confirmation before sending sensitive emails.`;
+Just write naturally — no need for special commands. I'll figure out what you need.`;
+
+/** Format a relative time label from a date string */
+function relativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 export async function handleCommand(
   userId: string,
@@ -32,7 +51,7 @@ export async function handleCommand(
   try {
     intent = await runParseChannelIntent(command);
   } catch {
-    return "Sorry, I couldn't understand that command. Try: Summarize my latest email";
+    return "Hmm, I didn't quite catch that. Try something like:\n- \"What's my latest email?\"\n- \"Any urgent emails today?\"\n- \"Draft a reply to John\"";
   }
 
   const supabase = getServiceClient();
@@ -41,23 +60,27 @@ export async function handleCommand(
     case "summarize_latest": {
       const { data: msg } = await supabase
         .from("messages")
-        .select("from_name, from_email, subject, ai_summary, snippet")
+        .select("from_name, from_email, subject, ai_summary, snippet, received_at")
         .eq("user_id", userId)
         .eq("is_deleted", false)
         .order("received_at", { ascending: false })
         .limit(1)
         .single();
 
-      if (!msg) return "No messages found in your inbox.";
+      if (!msg) return "Your inbox looks clear — no emails to show right now.";
 
+      const sender = msg.from_name || msg.from_email || "Unknown sender";
+      const subject = msg.subject || "(no subject)";
       const summary = msg.ai_summary || msg.snippet || "No summary available.";
-      return `Latest email from ${msg.from_name || msg.from_email}:\nSubject: ${msg.subject || "(no subject)"}\n\n${summary}`;
+      const when = relativeTime(msg.received_at);
+
+      return `📬 Latest email${when ? ` · ${when}` : ""}\n\nFrom: ${sender}\nSubject: ${subject}\n\n${summary}`;
     }
 
     case "list_urgent": {
       const { data: msgs } = await supabase
         .from("messages")
-        .select("from_name, from_email, subject")
+        .select("from_name, from_email, subject, received_at")
         .eq("user_id", userId)
         .eq("ai_priority", "high")
         .eq("is_deleted", false)
@@ -65,13 +88,19 @@ export async function handleCommand(
         .order("received_at", { ascending: false })
         .limit(5);
 
-      if (!msgs || msgs.length === 0) return "No urgent emails today.";
+      if (!msgs || msgs.length === 0)
+        return "Nothing urgent right now — your inbox is looking calm 👌";
 
       const list = msgs
-        .map((m, i) => `${i + 1}. ${m.from_name || m.from_email}: ${m.subject || "(no subject)"}`)
+        .map((m, i) => {
+          const sender = m.from_name || m.from_email || "Unknown";
+          const subject = m.subject || "(no subject)";
+          const when = relativeTime(m.received_at);
+          return `${i + 1}. ${sender} — ${subject}${when ? ` (${when})` : ""}`;
+        })
         .join("\n");
 
-      return `Urgent emails:\n${list}`;
+      return `⚡ ${msgs.length} urgent email${msgs.length > 1 ? "s" : ""} need your attention:\n\n${list}`;
     }
 
     case "search": {
@@ -79,33 +108,43 @@ export async function handleCommand(
       const escaped = escapePostgrestLike(query);
       const { data: msgs } = await supabase
         .from("messages")
-        .select("from_name, from_email, subject, snippet")
+        .select("from_name, from_email, subject, received_at")
         .eq("user_id", userId)
         .or(`subject.ilike.%${escaped}%,snippet.ilike.%${escaped}%`)
         .order("received_at", { ascending: false })
         .limit(5);
 
-      if (!msgs || msgs.length === 0) return `No emails found matching "${query}".`;
+      if (!msgs || msgs.length === 0)
+        return `I searched for "${query}" but didn't find anything. Try different keywords?`;
 
       const list = msgs
-        .map((m, i) => `${i + 1}. ${m.from_name || m.from_email}: ${m.subject || "(no subject)"}`)
+        .map((m, i) => {
+          const sender = m.from_name || m.from_email || "Unknown";
+          const subject = m.subject || "(no subject)";
+          const when = relativeTime(m.received_at);
+          return `${i + 1}. ${sender} — ${subject}${when ? ` (${when})` : ""}`;
+        })
         .join("\n");
 
-      return `Search results for "${query}":\n${list}`;
+      return `🔍 Found ${msgs.length} result${msgs.length > 1 ? "s" : ""} for "${query}":\n\n${list}`;
     }
 
     case "draft_reply":
-    case "reply_with_text":
-      return `I'll prepare a draft reply${intent.target ? ` to ${intent.target}` : ""}. This requires your approval before sending. (Draft feature available in the app.)`;
+    case "reply_with_text": {
+      const target = intent.target ? ` to ${intent.target}` : "";
+      return `✍️ I'll draft a reply${target} for you. Head over to the app to review and approve it before I send anything.\n\n👉 ${process.env.NEXT_PUBLIC_APP_URL || "sekpri-ai-pi.vercel.app"}`;
+    }
 
-    case "schedule_send":
-      return `I'll schedule that${intent.instruction ? ` for ${intent.instruction}` : ""}. You'll need to approve it before it sends. (Schedule feature available in the app.)`;
+    case "schedule_send": {
+      const when = intent.instruction ? ` for ${intent.instruction}` : "";
+      return `📅 Got it — I'll schedule that${when}. You'll need to approve it in the app before it goes out.\n\n👉 ${process.env.NEXT_PUBLIC_APP_URL || "sekpri-ai-pi.vercel.app"}`;
+    }
 
     case "send_approved":
-      return "Checking for approved drafts... (Send feature requires approval in the app.)";
+      return `✅ I'll check for any approved drafts ready to send. Open the app to confirm and send.\n\n👉 ${process.env.NEXT_PUBLIC_APP_URL || "sekpri-ai-pi.vercel.app"}`;
 
     case "cancel_scheduled":
-      return "I'll cancel the scheduled email. (Manage scheduled emails in the app.)";
+      return `🗑️ I'll cancel the scheduled email. You can manage all scheduled emails in the app.\n\n👉 ${process.env.NEXT_PUBLIC_APP_URL || "sekpri-ai-pi.vercel.app"}`;
 
     case "unknown":
     default:
@@ -113,4 +152,3 @@ export async function handleCommand(
   }
 }
 
-export { WELCOME_MESSAGE };

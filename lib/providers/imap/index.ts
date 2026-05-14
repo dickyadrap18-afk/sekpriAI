@@ -129,19 +129,38 @@ export function createImapAdapter(account: EmailAccount): EmailProviderAdapter {
       return messages;
     },
 
-    async sendMessage(params: SendMessageInput) {
+    async sendMessage(params: SendMessageInput): Promise<SendMessageResult> {
       const creds = getImapCredentials(account);
       const nodemailer = await import("nodemailer");
+
+      // Port 465 = SSL (secure:true), port 587 = STARTTLS (secure:false + requireTLS:true)
+      const isSSL = creds.smtpPort === 465;
 
       const transport = nodemailer.createTransport({
         host: creds.smtpHost,
         port: creds.smtpPort,
-        secure: creds.smtpPort === 465,
+        secure: isSSL,
+        requireTLS: !isSSL,
         auth: { user: creds.username, pass: creds.password },
+        tls: {
+          // Allow self-signed certs in dev; in prod Gmail/Outlook have valid certs
+          rejectUnauthorized: true,
+        },
       });
 
+      // Verify connection before sending
+      try {
+        await transport.verify();
+      } catch (err) {
+        throw new Error(
+          `SMTP connection failed for ${creds.smtpHost}:${creds.smtpPort} — ` +
+          `${err instanceof Error ? err.message : String(err)}. ` +
+          `For Gmail, make sure you are using an App Password, not your regular password.`
+        );
+      }
+
       const info = await transport.sendMail({
-        from: account.email_address,
+        from: `"${account.display_name || account.email_address}" <${account.email_address}>`,
         to: params.to.join(", "),
         cc: params.cc?.join(", "),
         subject: params.subject,

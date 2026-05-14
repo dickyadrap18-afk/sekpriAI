@@ -30,6 +30,7 @@ export interface ComposeFormData {
   body: string;
   in_reply_to_message_id?: string;
   schedule_for?: string;
+  draft_id?: string;
 }
 
 export type ComposeMode = "new" | "reply" | "forward";
@@ -39,4 +40,5 @@ export interface InboxFilters {
   search?: string;
   label?: string;
   priority?: "high" | "medium" | "low";
+  folder?: "inbox" | "starred" | "important" | "sent" | "drafts" | "archive" | "trash";
 }

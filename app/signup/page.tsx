@@ -39,7 +39,6 @@ function SignupForm() {
         return;
       }
 
-      // Success — cookies are set, redirect to inbox
       router.push("/inbox");
       router.refresh();
     } catch {
@@ -49,68 +48,82 @@ function SignupForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Create your account</h1>
-          <p className="text-sm text-muted-foreground">
-            Sign up to start using sekpriAI.
-          </p>
-        </div>
+    <main className="min-h-screen bg-black text-white flex flex-col">
+      {/* Dot grid */}
+      <div className="fixed inset-0 bg-grid opacity-100 pointer-events-none" />
 
-        {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={6}
-              autoComplete="new-password"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {loading ? "Creating account..." : "Sign Up"}
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="underline hover:text-foreground">
+      {/* Top nav */}
+      <nav className="relative z-10 flex items-center justify-between px-6 py-5">
+        <Link href="/">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="sekpriAI" className="h-7 w-auto object-contain" />
+        </Link>
+        <p className="text-sm text-white/40">
+          Have an account?{" "}
+          <Link href="/login" className="text-white hover:text-white/70 transition-colors">
             Sign in
           </Link>
         </p>
+      </nav>
+
+      {/* Form */}
+      <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm space-y-8">
+
+          {/* Heading */}
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight">Create account</h1>
+            <p className="text-sm text-white/40">Start managing your inbox with AI</p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="rounded-md border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-400" role="alert">
+              {error}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="text-xs font-medium text-white/40 uppercase tracking-widest">
+                Email
+              </label>
+              <input
+                id="email" name="email" type="email" required autoComplete="email"
+                className="input-base"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="text-xs font-medium text-white/40 uppercase tracking-widest">
+                Password
+              </label>
+              <input
+                id="password" name="password" type="password" required minLength={6}
+                autoComplete="new-password"
+                className="input-base"
+                placeholder="Min. 6 characters"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-white text-black text-sm font-semibold py-2.5 rounded-md hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mt-2"
+            >
+              {loading ? "Creating account..." : "Create account"}
+            </button>
+          </form>
+
+          <p className="text-center text-xs text-white/25">
+            Already have an account?{" "}
+            <Link href="/login" className="text-white/50 hover:text-white transition-colors">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </main>
   );

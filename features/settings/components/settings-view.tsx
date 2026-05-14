@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Mail, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { ConnectImapDialog } from "./connect-imap-dialog";
+import { ProviderIcon } from "./provider-icon";
 import { showToast } from "@/components/toast";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ interface SettingsViewProps {
 function SyncStatusBadge({ status }: { status: string }) {
   if (status === "syncing") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs text-blue-400">
         <RefreshCw className="h-3 w-3 animate-spin" />
         Syncing
       </span>
@@ -32,7 +33,7 @@ function SyncStatusBadge({ status }: { status: string }) {
   }
   if (status === "error") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-xs text-red-400">
         <AlertCircle className="h-3 w-3" />
         Error
       </span>
@@ -40,14 +41,14 @@ function SyncStatusBadge({ status }: { status: string }) {
   }
   if (status === "idle") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-xs text-green-400">
         <CheckCircle2 className="h-3 w-3" />
         Connected
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+    <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] border border-white/[0.1] px-2 py-0.5 text-xs text-muted-foreground">
       <Clock className="h-3 w-3" />
       {status}
     </span>
@@ -119,57 +120,41 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
         </div>
 
         {accounts.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center space-y-2">
-            <Mail className="h-8 w-8 mx-auto text-muted-foreground/40" />
+          <div className="rounded-xl border border-dashed border-white/[0.1] p-8 text-center space-y-2">
+            <Mail className="h-8 w-8 mx-auto text-muted-foreground/30" />
             <p className="text-sm font-medium text-muted-foreground">No accounts connected</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground/70">
               Connect an IMAP/SMTP account to start syncing emails.
             </p>
             <button
               onClick={() => setDialogOpen(true)}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               Connect your first account
             </button>
           </div>
         ) : (
-          <div className="rounded-lg border divide-y overflow-hidden">
+          <div className="rounded-xl border border-white/[0.07] divide-y divide-white/[0.05] overflow-hidden">
             {accounts.map((account) => (
-              <div
-                key={account.id}
-                className="flex items-center gap-3 px-4 py-3"
-              >
-                {/* Provider icon */}
-                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                </div>
-
-                {/* Info */}
+              <div key={account.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                <ProviderIcon provider={account.provider} emailAddress={account.email_address} size={36} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
+                  <p className="text-sm font-medium truncate text-foreground">
                     {account.display_name || account.email_address}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-xs text-muted-foreground truncate">
-                      {account.email_address}
-                    </p>
-                    <span className="text-muted-foreground/40">·</span>
-                    <p className="text-xs text-muted-foreground flex-shrink-0">
-                      {formatLastSynced(account.last_synced_at)}
-                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{account.email_address}</p>
+                    <span className="text-muted-foreground/30">·</span>
+                    <p className="text-xs text-muted-foreground/60 flex-shrink-0">{formatLastSynced(account.last_synced_at)}</p>
                   </div>
                 </div>
-
-                {/* Status */}
                 <SyncStatusBadge status={account.sync_status} />
-
-                {/* Delete */}
                 <button
                   onClick={() => handleDelete(account.id)}
                   disabled={deletingId === account.id}
                   className={cn(
-                    "rounded-md p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors",
+                    "rounded-lg p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors",
                     deletingId === account.id && "opacity-50 cursor-not-allowed"
                   )}
                   aria-label={`Remove ${account.email_address}`}

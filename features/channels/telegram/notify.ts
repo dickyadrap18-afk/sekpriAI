@@ -43,7 +43,7 @@ export async function notifyHighPriority(params: {
   if (existing) return false;
 
   // Send notification (plain text to avoid HTML injection from email content)
-  const text = `🔴 High priority email\nFrom: ${params.from}\nSubject: ${params.subject}\n\n${params.summary}`;
+  const text = `⚡ High-priority email just came in\n\nFrom: ${params.from}\nSubject: ${params.subject}\n\n${params.summary}\n\nReply or open the app to take action.`;
 
   const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
     method: "POST",

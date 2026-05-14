@@ -68,11 +68,11 @@ export async function POST(request: NextRequest) {
       inReplyToMessageId: data.in_reply_to_message_id,
     });
 
+    console.log("[send] Success:", JSON.stringify(result));
     return NextResponse.json({ success: true, ...result });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Send failed" },
-      { status: 500 }
-    );
+    const errMsg = err instanceof Error ? err.message : "Send failed";
+    console.error("[send] Error:", errMsg);
+    return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }

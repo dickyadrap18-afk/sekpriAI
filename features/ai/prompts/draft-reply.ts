@@ -60,17 +60,24 @@ export async function runDraftReply(input: {
   });
 
   try {
-    return outputSchema.parse(JSON.parse(response.text));
+    // Strip markdown code fences and extract JSON
+    const cleaned = response.text.replace(/```(?:json)?\n?/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    return outputSchema.parse(JSON.parse(jsonMatch[0]));
   } catch {
     const retry = await client.chat({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
         { role: "assistant", content: response.text },
-        { role: "user", content: "Reformat as valid JSON matching the schema." },
+        { role: "user", content: "Reformat as valid JSON matching the schema. Return ONLY the JSON object, no other text." },
       ],
       temperature: 0,
     });
-    return outputSchema.parse(JSON.parse(retry.text));
+    const cleaned = retry.text.replace(/```(?:json)?\n?/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("AI returned invalid JSON after retry");
+    return outputSchema.parse(JSON.parse(jsonMatch[0]));
   }
 }

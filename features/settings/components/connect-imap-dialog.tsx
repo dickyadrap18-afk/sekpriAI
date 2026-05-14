@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Eye, EyeOff, Loader2 } from "lucide-react";
 import { showToast } from "@/components/toast";
+import { ProviderIcon } from "./provider-icon";
 
 interface AccountRow {
   id: string;
@@ -122,19 +123,9 @@ export function ConnectImapDialog({ open, onClose, onConnected }: ConnectImapDia
         return;
       }
 
-      // Fetch the newly created account row to pass back
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { data: account } = await supabase
-        .from("email_accounts")
-        .select("id, provider, email_address, display_name, sync_status, last_synced_at, created_at")
-        .eq("email_address", form.email_address.trim())
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (account) {
-        onConnected(account as AccountRow);
+      // Use the account returned directly from the API — no extra round-trip needed
+      if (data.account) {
+        onConnected(data.account as AccountRow);
       }
 
       // Reset form
@@ -165,9 +156,9 @@ export function ConnectImapDialog({ open, onClose, onConnected }: ConnectImapDia
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
 
       {/* Dialog */}
-      <div className="relative z-50 w-full max-w-md rounded-t-xl sm:rounded-xl border bg-background shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="relative z-50 w-full max-w-md rounded-t-xl sm:rounded-xl border border-white/[0.1] bg-[#0a0a0a] shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-4 py-3 sticky top-0 bg-background z-10">
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3 sticky top-0 bg-[#0a0a0a] z-10">
           <h3 id="imap-dialog-title" className="text-sm font-semibold">
             Connect Email Account
           </h3>
@@ -185,29 +176,37 @@ export function ConnectImapDialog({ open, onClose, onConnected }: ConnectImapDia
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Provider</label>
             <div className="grid grid-cols-4 gap-2">
-              {Object.keys(PRESETS).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => applyPreset(key)}
-                  className={`rounded-md border px-2 py-1.5 text-xs font-medium capitalize transition-colors ${
-                    preset === key
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "hover:bg-accent"
-                  }`}
-                >
-                  {key === "custom" ? "Other" : key.charAt(0).toUpperCase() + key.slice(1)}
-                </button>
-              ))}
+              {(["gmail", "outlook", "yahoo", "custom"] as const).map((key) => {
+                const labels: Record<string, string> = {
+                  gmail: "Gmail", outlook: "Outlook", yahoo: "Yahoo", custom: "Other",
+                };
+                const isSelected = preset === key;
+                return (
+                  <button key={key} type="button" onClick={() => applyPreset(key)}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-primary/50 bg-primary/10 ring-1 ring-primary/30 text-primary"
+                        : "border-white/[0.1] text-muted-foreground hover:bg-white/[0.05] hover:text-foreground"
+                    }`}
+                  >
+                    <ProviderIcon
+                      provider={key === "custom" ? "imap" : key === "outlook" ? "office365" : key}
+                      emailAddress={key === "gmail" ? "x@gmail.com" : key === "outlook" ? "x@outlook.com" : key === "yahoo" ? "x@yahoo.com" : undefined}
+                      size={28}
+                    />
+                    <span className="text-[11px] leading-none">{labels[key]}</span>
+                  </button>
+                );
+              })}
             </div>
             {preset === "gmail" && (
-              <p className="text-xs text-amber-600 bg-amber-50 rounded-md px-3 py-2">
+              <p className="text-xs text-amber-400 bg-amber-500/[0.08] border border-amber-500/20 rounded-lg px-3 py-2">
                 Gmail requires an <strong>App Password</strong> (not your regular password).{" "}
                 <a
                   href="https://myaccount.google.com/apppasswords"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline"
+                  className="underline hover:text-amber-300"
                 >
                   Generate one here
                 </a>
@@ -344,20 +343,14 @@ export function ConnectImapDialog({ open, onClose, onConnected }: ConnectImapDia
           </details>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-2 border-t">
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
+          <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
+            <button type="submit" disabled={loading}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(99,102,241,0.4)]">
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {loading ? "Connecting..." : "Connect Account"}
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
-            >
+            <button type="button" onClick={onClose}
+              className="rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
               Cancel
             </button>
           </div>
@@ -388,7 +381,7 @@ function Field({
         {hint && <span className="ml-1 font-normal text-muted-foreground/70">— {hint}</span>}
       </label>
       {children}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }

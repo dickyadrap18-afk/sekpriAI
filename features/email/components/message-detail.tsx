@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import DOMPurify from "dompurify";
-import { ArrowLeft, Archive, Trash2, Reply, Forward, ChevronDown, ChevronUp, Send, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft, Archive, Trash2, Reply, Forward, ChevronDown,
+  Send, X, Cpu, ShieldAlert, PenLine, Tag, Plus, Loader2, RefreshCw, FileText,
+} from "lucide-react";
 import { PriorityBadge } from "./priority-badge";
-import type { Message } from "../types";
-import type { ComposeFormData } from "../types";
+import type { Message, ComposeFormData } from "../types";
 import { cn } from "@/lib/utils";
+import { showToast } from "@/components/toast";
 
 type InlineMode = "reply" | "forward" | null;
 
@@ -21,78 +25,154 @@ interface MessageDetailProps {
   onReply: (message: Message) => void;
   onForward: (message: Message) => void;
   onSend: (data: ComposeFormData) => void;
+  onMessageUpdate?: (updated: Partial<Message>) => void;
 }
 
 function formatFullDate(dateStr: string | null): string {
   if (!dateStr) return "";
   return new Date(dateStr).toLocaleString([], {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    weekday: "short", year: "numeric", month: "short",
+    day: "numeric", hour: "2-digit", minute: "2-digit",
   });
 }
 
+// Label color palette — each label gets a consistent color
+const LABEL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  INBOX:       { bg: "bg-blue-500/10",    border: "border-blue-500/25",   text: "text-blue-400" },
+  IMPORTANT:   { bg: "bg-red-500/10",     border: "border-red-500/25",    text: "text-red-400" },
+  STARRED:     { bg: "bg-amber-500/10",   border: "border-amber-500/25",  text: "text-amber-400" },
+  NEWSLETTER:  { bg: "bg-purple-500/10",  border: "border-purple-500/25", text: "text-purple-400" },
+  SENT:        { bg: "bg-green-500/10",   border: "border-green-500/25",  text: "text-green-400" },
+  WORK:        { bg: "bg-cyan-500/10",    border: "border-cyan-500/25",   text: "text-cyan-400" },
+  PERSONAL:    { bg: "bg-pink-500/10",    border: "border-pink-500/25",   text: "text-pink-400" },
+  FINANCE:     { bg: "bg-emerald-500/10", border: "border-emerald-500/25","text": "text-emerald-400" },
+  TRAVEL:      { bg: "bg-sky-500/10",     border: "border-sky-500/25",    text: "text-sky-400" },
+};
+
+const DEFAULT_LABEL_COLOR = { bg: "bg-white/[0.06]", border: "border-white/[0.1]", text: "text-muted-foreground" };
+
+function getLabelColor(label: string) {
+  return LABEL_COLORS[label.toUpperCase()] ?? DEFAULT_LABEL_COLOR;
+}
+
+const PRESET_LABELS = Object.keys(LABEL_COLORS);
+
 export function MessageDetail({
-  message,
-  loading,
-  error,
-  accounts,
-  onBack,
-  onArchive,
-  onDelete,
-  onReply,
-  onForward,
-  onSend,
+  message, loading, error, accounts,
+  onBack, onArchive, onDelete, onReply, onForward, onSend, onMessageUpdate,
 }: MessageDetailProps) {
   const [inlineMode, setInlineMode] = useState<InlineMode>(null);
   const [inlineBody, setInlineBody] = useState("");
   const [inlineTo, setInlineTo] = useState("");
   const [inlineFromId, setInlineFromId] = useState(accounts[0]?.id || "");
+  const [aiDraftLoading, setAiDraftLoading] = useState(false);
+  const [analyzeLoading, setAnalyzeLoading] = useState(false);
+  const [showLabelMenu, setShowLabelMenu] = useState(false);
+  const [customLabelInput, setCustomLabelInput] = useState("");
+  const [localMessage, setLocalMessage] = useState<Message | null>(null);
+
+  const msg = localMessage?.id === message?.id ? localMessage : message;
 
   function openInline(mode: InlineMode) {
-    if (inlineMode === mode) {
-      setInlineMode(null);
-      return;
-    }
+    if (inlineMode === mode) { setInlineMode(null); return; }
     setInlineMode(mode);
     setInlineBody("");
-    if (mode === "reply" && message) {
-      setInlineTo(message.from_email);
-    } else {
-      setInlineTo("");
-    }
+    setInlineTo(mode === "reply" && msg ? msg.from_email : "");
     setInlineFromId(accounts[0]?.id || "");
   }
 
   function handleInlineSend() {
-    if (!message) return;
-    const data: ComposeFormData = {
+    if (!msg) return;
+    onSend({
       from_account_id: inlineFromId,
       to: inlineTo,
-      subject:
-        inlineMode === "reply"
-          ? `Re: ${message.subject || ""}`
-          : `Fwd: ${message.subject || ""}`,
-      body:
-        inlineMode === "reply"
-          ? `${inlineBody}\n\n---\nOn ${formatFullDate(message.received_at)}, ${message.from_name || message.from_email} wrote:\n> ${message.body_text?.split("\n").join("\n> ") || ""}`
-          : `${inlineBody}\n\n---\nForwarded message:\nFrom: ${message.from_name || message.from_email} <${message.from_email}>\nSubject: ${message.subject || ""}\n\n${message.body_text || ""}`,
-      in_reply_to_message_id: inlineMode === "reply" ? message.id : undefined,
-    };
-    onSend(data);
+      subject: inlineMode === "reply" ? `Re: ${msg.subject || ""}` : `Fwd: ${msg.subject || ""}`,
+      body: inlineMode === "reply"
+        ? `${inlineBody}\n\n---\nOn ${formatFullDate(msg.received_at)}, ${msg.from_name || msg.from_email} wrote:\n> ${msg.body_text?.split("\n").join("\n> ") || ""}`
+        : `${inlineBody}\n\n---\nForwarded message:\nFrom: ${msg.from_name || msg.from_email} <${msg.from_email}>\nSubject: ${msg.subject || ""}\n\n${msg.body_text || ""}`,
+      in_reply_to_message_id: inlineMode === "reply" ? msg.id : undefined,
+    });
     setInlineMode(null);
     setInlineBody("");
+  }
+
+  async function handleAiDraft() {
+    if (!msg) return;
+    setAiDraftLoading(true);
+    try {
+      const res = await fetch("/api/messages/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message_id: msg.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Draft failed");
+      setInlineMode("reply");
+      setInlineTo(msg.from_email);
+      setInlineFromId(accounts[0]?.id || "");
+      setInlineBody(data.draft_body || data.body || data.subject || "");
+      showToast("AI draft ready — review before sending", "success");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Failed to generate draft", "error");
+    } finally {
+      setAiDraftLoading(false);
+    }
+  }
+
+  async function handleAnalyze() {
+    if (!msg) return;
+    setAnalyzeLoading(true);
+    try {
+      const res = await fetch("/api/ai/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message_id: msg.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      setLocalMessage({ ...msg, ...data });
+      onMessageUpdate?.(data);
+      showToast("AI analysis complete", "success");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Analysis failed", "error");
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  }
+
+  async function applyLabelChange(newLabels: string[]) {
+    if (!msg) return;
+    const prev = { ...msg };
+    setLocalMessage({ ...msg, labels: newLabels });
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { error: err } = await supabase.from("messages").update({ labels: newLabels }).eq("id", msg.id);
+    if (err) { setLocalMessage(prev); showToast("Failed to update label", "error"); }
+  }
+
+  function handleToggleLabel(label: string) {
+    if (!msg) return;
+    const current: string[] = msg.labels ?? [];
+    const has = current.includes(label);
+    applyLabelChange(has ? current.filter((l) => l !== label) : [...current, label]);
+  }
+
+  function handleAddCustomLabel() {
+    const label = customLabelInput.trim().toUpperCase();
+    if (!label || !msg) return;
+    const current: string[] = msg.labels ?? [];
+    if (!current.includes(label)) applyLabelChange([...current, label]);
+    setCustomLabelInput("");
+    setShowLabelMenu(false);
   }
 
   if (loading) {
     return (
       <div className="flex-1 p-6 space-y-4">
-        <div className="animate-pulse h-6 w-2/3 bg-muted rounded" />
-        <div className="animate-pulse h-4 w-1/3 bg-muted rounded" />
-        <div className="animate-pulse h-32 bg-muted rounded mt-6" />
+        {[0.66, 0.33, 1].map((w, i) => (
+          <div key={i} className="animate-pulse h-4 rounded-lg bg-white/[0.05]" style={{ width: `${w * 100}%` }} />
+        ))}
+        <div className="animate-pulse h-32 rounded-xl bg-white/[0.04] mt-6" />
       </div>
     );
   }
@@ -100,283 +180,316 @@ export function MessageDetail({
   if (error) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-400">{error}</p>
       </div>
     );
   }
 
-  if (!message) {
+  if (!msg) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-muted-foreground gap-2">
-        <Reply className="h-10 w-10 opacity-20" />
-        <p className="text-sm font-medium">No message selected</p>
-        <p className="text-xs">Pick an email from the list to read it here.</p>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-3">
+        <div className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+          <FileText className="h-7 w-7 text-primary/40" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-medium text-foreground/60">Your AI secretary is ready</p>
+          <p className="text-xs text-muted-foreground mt-1">Select a message to read and reply</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <motion.div
+      key={msg.id}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="flex flex-1 flex-col overflow-hidden"
+    >
       {/* Header toolbar */}
-      <div className="flex items-center gap-1 border-b px-3 py-2 bg-background">
-        <button
-          onClick={onBack}
-          className="rounded-md p-1.5 hover:bg-accent lg:hidden"
-          aria-label="Back to inbox"
-        >
+      <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-3 py-2 flex-wrap">
+        <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors lg:hidden" aria-label="Back">
           <ArrowLeft className="h-4 w-4" />
         </button>
-
         <div className="flex-1" />
 
-        {/* Reply / Forward — prominent buttons */}
-        <button
-          onClick={() => openInline("reply")}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-            inlineMode === "reply"
-              ? "bg-primary text-primary-foreground"
-              : "border hover:bg-accent"
-          )}
-          aria-label="Reply"
-        >
-          <Reply className="h-3.5 w-3.5" />
-          Reply
-        </button>
-        <button
-          onClick={() => openInline("forward")}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-            inlineMode === "forward"
-              ? "bg-primary text-primary-foreground"
-              : "border hover:bg-accent"
-          )}
-          aria-label="Forward"
-        >
-          <Forward className="h-3.5 w-3.5" />
-          Forward
+        {/* AI Draft */}
+        <button onClick={handleAiDraft} disabled={aiDraftLoading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-xs font-medium text-violet-300 hover:bg-violet-500/20 disabled:opacity-50 transition-all"
+          title="Generate AI reply draft">
+          {aiDraftLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenLine className="h-3.5 w-3.5" />}
+          AI Draft
         </button>
 
-        <div className="w-px h-5 bg-border mx-1" />
+        {/* Analyze */}
+        {!msg.ai_processed_at && (
+          <button onClick={handleAnalyze} disabled={analyzeLoading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary/80 hover:bg-primary/20 disabled:opacity-50 transition-all"
+            title="Run AI analysis">
+            {analyzeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Analyze
+          </button>
+        )}
 
-        <button
-          onClick={() => onArchive(message.id)}
-          className="rounded-md p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground"
-          aria-label="Archive"
-          title="Archive"
-        >
+        <button onClick={() => openInline("reply")}
+          className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
+            inlineMode === "reply" ? "bg-primary text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]" : "border border-white/[0.1] text-muted-foreground hover:text-foreground hover:bg-white/[0.06]")}>
+          <Reply className="h-3.5 w-3.5" /> Reply
+        </button>
+        <button onClick={() => openInline("forward")}
+          className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
+            inlineMode === "forward" ? "bg-primary text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]" : "border border-white/[0.1] text-muted-foreground hover:text-foreground hover:bg-white/[0.06]")}>
+          <Forward className="h-3.5 w-3.5" /> Forward
+        </button>
+        <div className="w-px h-4 bg-white/[0.08] mx-0.5" />
+        <button onClick={() => onArchive(msg.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/[0.08] hover:text-foreground transition-colors" aria-label="Archive" title="Archive">
           <Archive className="h-4 w-4" />
         </button>
-        <button
-          onClick={() => onDelete(message.id)}
-          className="rounded-md p-1.5 hover:bg-red-50 text-muted-foreground hover:text-red-600"
-          aria-label="Delete"
-          title="Delete"
-        >
+        <button onClick={() => onDelete(msg.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors" aria-label="Delete" title="Delete">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6 space-y-4">
-          {/* Subject + priority */}
-          <div className="space-y-1">
+        <div className="p-4 md:p-6 space-y-5">
+
+          {/* Subject + meta */}
+          <div className="space-y-2">
             <div className="flex items-start gap-2 flex-wrap">
-              <h2 className="text-lg font-semibold leading-tight">
-                {message.subject || "(no subject)"}
-              </h2>
-              <PriorityBadge priority={message.ai_priority} />
+              <h2 className="text-base font-semibold leading-snug text-foreground">{msg.subject || "(no subject)"}</h2>
+              <PriorityBadge priority={msg.ai_priority} size="md" />
             </div>
-            <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
-              <span>
-                <span className="font-medium text-foreground">
-                  {message.from_name || message.from_email}
-                </span>{" "}
-                &lt;{message.from_email}&gt;
-              </span>
-              <span className="text-xs">To: {message.to_emails?.join(", ")}</span>
-              <span className="text-xs">{formatFullDate(message.received_at)}</span>
+            <div className="space-y-0.5">
+              <p className="text-sm">
+                <span className="font-medium text-foreground/80">{msg.from_name || msg.from_email}</span>
+                {msg.from_name && <span className="text-muted-foreground/60"> &lt;{msg.from_email}&gt;</span>}
+              </p>
+              <p className="text-xs text-muted-foreground/60">To: {msg.to_emails?.join(", ")}</p>
+              <p className="text-xs text-muted-foreground/50">{formatFullDate(msg.received_at)}</p>
             </div>
           </div>
 
-          {/* AI Summary card */}
-          {message.ai_summary && (
-            <div className="rounded-lg border bg-accent/30 p-3 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                AI Summary
-              </p>
-              <p className="text-sm">{message.ai_summary}</p>
+          {/* AI Summary */}
+          {msg.ai_summary && (
+            <div className="relative rounded-xl overflow-hidden">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/30 via-violet-500/20 to-primary/10 p-px">
+                <div className="h-full w-full rounded-xl bg-[#0a0a0a]" />
+              </div>
+              <div className="relative p-4 space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Cpu className="h-3.5 w-3.5 text-primary/80" />
+                  <p className="text-[11px] font-semibold text-primary/80 uppercase tracking-widest">AI Summary</p>
+                </div>
+                <p className="text-sm text-foreground/85 leading-relaxed">{msg.ai_summary}</p>
+                {msg.ai_priority_reason && (
+                  <p className="text-xs text-muted-foreground/70 border-t border-white/[0.06] pt-1.5">
+                    Priority: {msg.ai_priority_reason}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Risk badge */}
-          {message.ai_risk_level && message.ai_risk_level !== "low" && (
-            <div
-              className={cn(
-                "rounded-lg border p-3 space-y-1",
-                message.ai_risk_level === "high"
-                  ? "border-red-200 bg-red-50"
-                  : "border-amber-200 bg-amber-50"
-              )}
-            >
-              <p className="text-xs font-medium uppercase tracking-wide">
-                Risk: {message.ai_risk_level}
-              </p>
-              <p className="text-sm">{message.ai_risk_reason}</p>
+          {/* Not yet analyzed */}
+          {!msg.ai_processed_at && !analyzeLoading && (
+            <button onClick={handleAnalyze}
+              className="w-full rounded-xl border border-dashed border-white/[0.1] p-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-primary/70 hover:bg-primary/5 transition-all text-center">
+              <FileText className="h-3.5 w-3.5 inline mr-1.5" />
+              Click to run AI analysis on this email
+            </button>
+          )}
+
+          {/* Risk */}
+          {msg.ai_risk_level && msg.ai_risk_level !== "low" && (
+            <div className={cn("rounded-xl border p-3.5 flex items-start gap-3",
+              msg.ai_risk_level === "high" ? "border-red-500/20 bg-red-500/[0.07]" : "border-amber-500/20 bg-amber-500/[0.07]")}>
+              <ShieldAlert className={cn("h-4 w-4 mt-0.5 flex-shrink-0", msg.ai_risk_level === "high" ? "text-red-400" : "text-amber-400")} />
+              <div>
+                <p className={cn("text-xs font-semibold uppercase tracking-wide", msg.ai_risk_level === "high" ? "text-red-400" : "text-amber-400")}>
+                  Risk: {msg.ai_risk_level}
+                </p>
+                <p className="text-sm text-foreground/70 mt-0.5">{msg.ai_risk_reason}</p>
+              </div>
             </div>
           )}
 
-          {/* Body */}
-          <div className="prose prose-sm max-w-none">
-            {message.body_html ? (
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(message.body_html, {
-                    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
-                    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
-                    ALLOW_DATA_ATTR: false,
-                  }),
+          {/* Body — isolated dari dark theme agar HTML email tidak nabrak */}
+          <div className="rounded-xl overflow-hidden border border-white/[0.06]">
+            {msg.body_html ? (
+              <iframe
+                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;color:#1a1a1a;background:#ffffff;word-break:break-word}a{color:#6366f1}img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}td,th{padding:4px 8px}pre,code{white-space:pre-wrap;word-break:break-all;font-size:13px}</style></head><body>${DOMPurify.sanitize(msg.body_html, {
+                  FORBID_TAGS: ["script", "iframe", "object", "embed", "form"],
+                  FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+                  ALLOW_DATA_ATTR: false,
+                })}</body></html>`}
+                className="w-full min-h-[200px] border-0 bg-white"
+                sandbox="allow-same-origin"
+                title="Email content"
+                onLoad={(e) => {
+                  const iframe = e.currentTarget;
+                  const doc = iframe.contentDocument;
+                  if (doc) {
+                    iframe.style.height = doc.documentElement.scrollHeight + "px";
+                  }
                 }}
               />
             ) : (
-              <pre className="whitespace-pre-wrap font-sans text-sm">
-                {message.body_text}
+              <pre className="whitespace-pre-wrap font-sans text-sm text-foreground/80 leading-relaxed p-4 bg-white/[0.02]">
+                {msg.body_text}
               </pre>
             )}
           </div>
 
-          {/* Labels */}
-          {message.labels && message.labels.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-2">
-              {message.labels.map((label) => (
-                <span
-                  key={label}
-                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs"
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Labels — colored + custom input */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(msg.labels ?? []).map((label) => {
+                const c = getLabelColor(label);
+                return (
+                  <button key={label} onClick={() => handleToggleLabel(label)}
+                    className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border transition-all group", c.bg, c.border, c.text, "hover:opacity-70")}
+                    title={`Remove ${label}`}>
+                    {label}
+                    <X className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                );
+              })}
 
-        {/* ── Inline Reply / Forward Box ── */}
-        {inlineMode && (
-          <div className="border-t mx-4 md:mx-6 mb-6 rounded-lg border shadow-sm bg-background overflow-hidden">
-            {/* Box header */}
-            <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {inlineMode === "reply" ? "Reply" : "Forward"}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setInlineMode(null)}
-                  className="rounded p-1 hover:bg-accent"
-                  aria-label="Close"
-                >
-                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+              {/* Add label button */}
+              <div className="relative">
+                <button onClick={() => setShowLabelMenu(!showLabelMenu)}
+                  className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/[0.15] px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-primary/70 transition-colors">
+                  <Plus className="h-3 w-3" /><Tag className="h-3 w-3" />
                 </button>
-              </div>
-            </div>
-
-            <div className="p-3 space-y-2">
-              {/* From */}
-              {accounts.length > 1 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground w-12 flex-shrink-0">From</span>
-                  <select
-                    value={inlineFromId}
-                    onChange={(e) => setInlineFromId(e.target.value)}
-                    className="flex-1 h-8 rounded border border-input bg-background px-2 text-xs"
-                  >
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.display_name || acc.email_address}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* To */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground w-12 flex-shrink-0">To</span>
-                <input
-                  type="text"
-                  value={inlineTo}
-                  onChange={(e) => setInlineTo(e.target.value)}
-                  className="flex-1 h-8 rounded border border-input bg-background px-2 text-xs"
-                  placeholder="recipient@example.com"
-                />
-              </div>
-
-              {/* Textarea */}
-              <textarea
-                value={inlineBody}
-                onChange={(e) => setInlineBody(e.target.value)}
-                rows={5}
-                autoFocus
-                placeholder={
-                  inlineMode === "reply"
-                    ? "Write your reply..."
-                    : "Add a note before forwarding..."
-                }
-                className="w-full rounded border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-
-              {/* Quoted original (collapsed hint) */}
-              <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer hover:text-foreground select-none flex items-center gap-1">
-                  <ChevronDown className="h-3 w-3" />
-                  Show original message
-                </summary>
-                <pre className="mt-2 whitespace-pre-wrap font-sans text-xs border-l-2 border-muted pl-3 text-muted-foreground">
-                  {message.body_text}
-                </pre>
-              </details>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={handleInlineSend}
-                  disabled={!inlineBody.trim() || !inlineTo.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="h-3 w-3" />
-                  Send
-                </button>
-                <button
-                  onClick={() => setInlineMode(null)}
-                  className="inline-flex items-center gap-1.5 rounded-md border px-4 py-1.5 text-xs font-medium hover:bg-accent"
-                >
-                  Discard
-                </button>
+                <AnimatePresence>
+                  {showLabelMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 top-full mt-1.5 z-30 w-52 rounded-xl border border-white/[0.1] bg-[#0a0a0a] shadow-2xl overflow-hidden"
+                    >
+                      {/* Custom label input */}
+                      <div className="p-2 border-b border-white/[0.06]">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={customLabelInput}
+                            onChange={(e) => setCustomLabelInput(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleAddCustomLabel()}
+                            placeholder="Custom label..."
+                            className="flex-1 h-7 rounded-lg bg-white/[0.06] border border-white/[0.1] px-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          />
+                          <button onClick={handleAddCustomLabel}
+                            className="h-7 w-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center hover:bg-primary/30 transition-colors">
+                            <Plus className="h-3 w-3 text-primary" />
+                          </button>
+                        </div>
+                      </div>
+                      {/* Preset labels */}
+                      <div className="p-1 max-h-48 overflow-y-auto">
+                        {PRESET_LABELS.map((label) => {
+                          const has = (msg.labels ?? []).includes(label);
+                          const c = getLabelColor(label);
+                          return (
+                            <button key={label}
+                              onClick={() => { handleToggleLabel(label); setShowLabelMenu(false); }}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs hover:bg-white/[0.05] transition-colors">
+                              <span className={cn("h-2 w-2 rounded-full flex-shrink-0", c.bg.replace("/10", "/60").replace("bg-", "bg-"))} />
+                              <span className={has ? c.text + " font-medium" : "text-muted-foreground"}>{label}</span>
+                              {has && <span className="ml-auto text-[10px] text-primary/60">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Quick action bar at bottom when no inline box */}
+        {/* Inline Reply / Forward Box */}
+        <AnimatePresence>
+          {inlineMode && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="mx-4 md:mx-6 mb-6 rounded-xl border border-white/[0.1] bg-[#0a0a0a] overflow-hidden shadow-xl"
+            >
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
+                <span className="text-xs font-semibold uppercase tracking-widest text-primary/70">
+                  {inlineMode === "reply" ? "↩ Reply" : "↪ Forward"}
+                </span>
+                <button onClick={() => setInlineMode(null)} className="rounded-md p-1 hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-3">
+                {accounts.length > 1 && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-10 flex-shrink-0">From</span>
+                    <select value={inlineFromId} onChange={(e) => setInlineFromId(e.target.value)}
+                      className="flex-1 h-8 rounded-lg border border-white/[0.1] bg-white/[0.04] px-2 text-xs text-foreground">
+                      {accounts.map((acc) => <option key={acc.id} value={acc.id}>{acc.display_name || acc.email_address}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-10 flex-shrink-0">To</span>
+                  <input type="text" value={inlineTo} onChange={(e) => setInlineTo(e.target.value)}
+                    className="flex-1 h-8 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    placeholder="recipient@example.com" />
+                </div>
+                <textarea value={inlineBody} onChange={(e) => setInlineBody(e.target.value)} rows={5} autoFocus
+                  placeholder={inlineMode === "reply" ? "Write your reply..." : "Add a note before forwarding..."}
+                  className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors" />
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer hover:text-foreground select-none flex items-center gap-1.5">
+                    <ChevronDown className="h-3 w-3" /> Show original message
+                  </summary>
+                  <pre className="mt-2 whitespace-pre-wrap font-sans text-xs border-l-2 border-white/[0.08] pl-3 text-muted-foreground/60">{msg.body_text}</pre>
+                </details>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={handleInlineSend} disabled={!inlineBody.trim() || !inlineTo.trim()}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(99,102,241,0.4)]">
+                    <Send className="h-3 w-3" /> Send
+                  </button>
+                  <button onClick={() => setInlineMode(null)}
+                    className="inline-flex items-center rounded-lg border border-white/[0.1] px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
+                    Discard
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Bottom action bar */}
         {!inlineMode && (
-          <div className="flex items-center gap-2 px-4 md:px-6 pb-6">
-            <button
-              onClick={() => openInline("reply")}
-              className="inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
-            >
-              <Reply className="h-4 w-4" />
-              Reply
+          <div className="flex items-center gap-2 px-4 md:px-6 pb-6 flex-wrap">
+            <button onClick={() => openInline("reply")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
+              <Reply className="h-4 w-4" /> Reply
             </button>
-            <button
-              onClick={() => openInline("forward")}
-              className="inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
-            >
-              <Forward className="h-4 w-4" />
-              Forward
+            <button onClick={() => openInline("forward")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
+              <Forward className="h-4 w-4" /> Forward
+            </button>
+            <button onClick={handleAiDraft} disabled={aiDraftLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-500/20 disabled:opacity-50 transition-all">
+              {aiDraftLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+              AI Draft
             </button>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

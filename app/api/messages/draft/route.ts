@@ -72,21 +72,32 @@ export async function POST(request: NextRequest) {
 
   const fullContext = [ragContext, memoryContext].filter(Boolean).join("\n\n");
 
-  const draft = await runDraftReply({
-    from,
-    subject: message.subject || "(no subject)",
-    body: message.body_text || message.snippet || "",
-    context: fullContext || undefined,
-  });
+  try {
+    const draft = await runDraftReply({
+      from,
+      subject: message.subject || "(no subject)",
+      body: message.body_text || message.snippet || "",
+      context: fullContext || undefined,
+    });
 
-  // Log the AI action
-  await supabase.from("ai_actions").insert({
-    user_id: user.id,
-    feature: "draft",
-    input: { message_id: message.id, has_rag: !!ragContext, has_memory: !!memoryContext },
-    output: draft,
-    model: "default",
-  });
+    // Log the AI action
+    await supabase.from("ai_actions").insert({
+      user_id: user.id,
+      feature: "draft",
+      input: { message_id: message.id, has_rag: !!ragContext, has_memory: !!memoryContext },
+      output: draft,
+      model: "default",
+    });
 
-  return NextResponse.json(draft);
+    return NextResponse.json({
+      body: draft.body,
+      subject: draft.subject,
+      tone: draft.tone,
+      needs_approval: draft.needs_approval,
+    });
+  } catch (err) {
+    const message_err = err instanceof Error ? err.message : "AI draft generation failed";
+    console.error("Draft route error:", message_err);
+    return NextResponse.json({ error: message_err }, { status: 500 });
+  }
 }
