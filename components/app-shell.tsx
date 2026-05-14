@@ -107,20 +107,20 @@ export function AppShell({ user, children }: AppShellProps) {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="flex h-14 items-center gap-4 border-b px-4">
+        {/* Top bar — mobile only (shows hamburger + app name) */}
+        <header className="flex h-14 items-center gap-3 border-b px-4 lg:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="rounded-md p-1.5 hover:bg-accent lg:hidden"
+            className="rounded-md p-1.5 hover:bg-accent"
             aria-label="Open sidebar"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex-1" />
+          <span className="text-base font-bold">sekpriAI</span>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

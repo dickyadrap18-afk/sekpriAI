@@ -138,11 +138,13 @@ export function InboxView() {
           message={selectedMessage}
           loading={detailLoading}
           error={detailError}
+          accounts={accounts}
           onBack={() => setSelectedId(null)}
           onArchive={handleArchive}
           onDelete={handleDelete}
           onReply={handleReply}
           onForward={handleForward}
+          onSend={handleSend}
         />
       </div>
 
