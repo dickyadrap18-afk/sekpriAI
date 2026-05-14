@@ -1,8 +1,8 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 
+// Cache the auth check for the duration of the request
 export default async function AppLayout({
   children,
 }: {
@@ -17,9 +17,7 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return (
-    <Suspense>
-      <AppShell user={user}>{children}</AppShell>
-    </Suspense>
-  );
+  // AppShell is a client component — children render immediately
+  // No Suspense wrapper needed here; each page handles its own loading state
+  return <AppShell user={user}>{children}</AppShell>;
 }

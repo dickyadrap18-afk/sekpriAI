@@ -25,6 +25,7 @@ export function AccountSwitcher({ accounts, selectedId, onSelect }: AccountSwitc
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0, w: 0 });
 
   useEffect(() => { setMounted(true); }, []);
@@ -32,12 +33,18 @@ export function AccountSwitcher({ accounts, selectedId, onSelect }: AccountSwitc
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (btnRef.current && !btnRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (dropRef.current?.contains(t)) return;
+      setOpen(false);
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClick);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClick);
+    };
   }, [open]);
 
   if (accounts.length === 0) return null;
@@ -55,6 +62,7 @@ export function AccountSwitcher({ accounts, selectedId, onSelect }: AccountSwitc
 
   const dropdown = open && mounted ? createPortal(
     <div
+      ref={dropRef}
       style={{ position: "fixed", left: pos.x, top: pos.y, minWidth: pos.w, ...DROPDOWN_STYLE }}
       className="py-1"
     >

@@ -13,7 +13,7 @@ import { useAccounts } from "../hooks/use-accounts";
 import { useMessage } from "../hooks/use-message";
 import type { ComposeFormData, ComposeMode, InboxFilters, Message } from "../types";
 import { cn } from "@/lib/utils";
-import { RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 
 export function InboxView() {
   const searchParams = useSearchParams();

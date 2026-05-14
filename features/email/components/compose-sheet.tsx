@@ -62,7 +62,6 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
   }
 
   async function saveDraft(currentForm: ComposeFormData) {
-    // Only save if there's something to save
     if (!currentForm.body.trim() && !currentForm.subject.trim() && !currentForm.to.trim()) return;
     setDraftSaving(true);
     try {
@@ -71,7 +70,12 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
       const account = accounts.find((a) => a.id === currentForm.from_account_id);
       if (!account) return;
 
+      // Get user_id — required by RLS
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const draftPayload = {
+        user_id: user.id,
         provider: account.provider || "imap",
         provider_message_id: draftId ?? `draft-${Date.now()}`,
         account_id: currentForm.from_account_id,
@@ -89,19 +93,28 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
       };
 
       if (draftId) {
-        // Update existing draft
         await supabase.from("messages").update(draftPayload).eq("id", draftId);
       } else {
-        // Create new draft
         const { data } = await supabase.from("messages").insert(draftPayload).select("id").single();
         if (data?.id) setDraftId(data.id);
       }
       setDraftSavedAt(new Date());
     } catch {
-      // Draft save failure is silent
+      // silent
     } finally {
       setDraftSaving(false);
     }
+  }
+
+  // Save draft then close — called when user clicks outside or presses Escape
+  async function handleClose() {
+    if (mode !== "new") { onClose(); return; }
+    const hasContent = form.body.trim() || form.subject.trim() || form.to.trim();
+    if (hasContent) {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+      await saveDraft(form);
+    }
+    onClose();
   }
 
   // Cleanup timer on unmount
@@ -114,11 +127,11 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  }, [open, form]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function validate(): boolean {
     const e: Record<string, string> = {};
@@ -185,14 +198,14 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="compose-title">
-          {/* Overlay */}
+          {/* Overlay — save draft on outside click */}
           <motion.div
             key="compose-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           {/* Sheet */}
@@ -211,7 +224,7 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
                 {/* Draft status */}
                 {mode === "new" && (
                   <span className="text-[11px] text-muted-foreground/60">
-                    {draftSaving ? "Saving..." : draftSavedAt ? `Draft saved ${draftSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
+                    {draftSaving ? "Saving draft..." : draftSavedAt ? `Saved ${draftSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
                   </span>
                 )}
               </div>
@@ -232,7 +245,7 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
                     AI Write
                   </button>
                 )}
-                <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
+                <button onClick={handleClose} className="rounded-lg p-1.5 hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -362,7 +375,7 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
                   <Clock className="h-3.5 w-3.5" />
                 </button>
 
-                <button type="button" onClick={onClose} disabled={sending}
+                <button type="button" onClick={handleClose} disabled={sending}
                   className="inline-flex items-center rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors disabled:opacity-40">
                   Cancel
                 </button>

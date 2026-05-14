@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
 import { SettingsView } from "@/features/settings/components/settings-view";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -36,20 +35,14 @@ function SettingsSkeleton() {
   );
 }
 
-async function SettingsLoader() {
-  const supabase = await createClient();
-  const { data: accounts } = await supabase
-    .from("email_accounts")
-    .select("id, provider, email_address, display_name, sync_status, last_synced_at, created_at")
-    .order("created_at", { ascending: true });
-  return <SettingsView initialAccounts={accounts ?? []} />;
-}
-
+// Settings page is fully client-side — no server fetch needed at page level.
+// SettingsView fetches accounts itself via Supabase client.
+// This makes navigation to /settings instant.
 export default function SettingsPage() {
   return (
     <ErrorBoundary>
       <Suspense fallback={<SettingsSkeleton />}>
-        <SettingsLoader />
+        <SettingsView initialAccounts={[]} />
       </Suspense>
     </ErrorBoundary>
   );

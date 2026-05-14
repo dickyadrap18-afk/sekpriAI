@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { ConnectImapDialog } from "./connect-imap-dialog";
 import { ProviderIcon } from "./provider-icon";
@@ -65,6 +65,20 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
   const [accounts, setAccounts] = useState<AccountRow[]>(initialAccounts);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Fetch accounts client-side if not provided (e.g., when navigating directly)
+  useEffect(() => {
+    if (initialAccounts.length > 0) return;
+    async function load() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("email_accounts")
+        .select("id, provider, email_address, display_name, sync_status, last_synced_at, created_at")
+        .order("created_at", { ascending: true });
+      if (data) setAccounts(data as AccountRow[]);
+    }
+    load();
+  }, [initialAccounts.length]);
 
   async function handleDelete(id: string) {
     if (!confirm("Remove this account? This will also delete all synced messages.")) return;

@@ -44,22 +44,33 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onRefresh }: 
 
   const priorityBtnRef = useRef<HTMLButtonElement>(null);
   const labelBtnRef = useRef<HTMLButtonElement>(null);
+  const priorityDropRef = useRef<HTMLDivElement>(null);
+  const labelDropRef = useRef<HTMLDivElement>(null);
   const [priorityPos, setPriorityPos] = useState({ x: 0, y: 0 });
   const [labelPos, setLabelPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click — must exclude the dropdown portal itself
   useEffect(() => {
     if (!showPriority && !showLabel) return;
     function handle(e: MouseEvent) {
       const t = e.target as Node;
-      if (priorityBtnRef.current?.contains(t) || labelBtnRef.current?.contains(t)) return;
+      if (priorityBtnRef.current?.contains(t)) return;
+      if (labelBtnRef.current?.contains(t)) return;
+      if (priorityDropRef.current?.contains(t)) return;
+      if (labelDropRef.current?.contains(t)) return;
       setShowPriority(false);
       setShowLabel(false);
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    // Use 'mousedown' but with a tiny delay so item onClick fires first
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handle);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handle);
+    };
   }, [showPriority, showLabel]);
 
   function handleSearch(val: string) {
@@ -202,7 +213,7 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onRefresh }: 
 
       {/* Priority dropdown — portal */}
       {mounted && showPriority && createPortal(
-        <div style={{ ...DROPDOWN_STYLE, left: priorityPos.x, top: priorityPos.y, width: 144 }} className="py-1">
+        <div ref={priorityDropRef} style={{ ...DROPDOWN_STYLE, left: priorityPos.x, top: priorityPos.y, width: 144 }} className="py-1">
           {filters.priority && (
             <button onClick={() => { onFiltersChange({ ...filters, priority: undefined }); setShowPriority(false); }}
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white/30 hover:bg-white/[0.06] hover:text-white/60 transition-colors">
@@ -224,7 +235,7 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onRefresh }: 
 
       {/* Label dropdown — portal */}
       {mounted && showLabel && createPortal(
-        <div style={{ ...DROPDOWN_STYLE, left: labelPos.x, top: labelPos.y, width: 160 }} className="py-1">
+        <div ref={labelDropRef} style={{ ...DROPDOWN_STYLE, left: labelPos.x, top: labelPos.y, width: 160 }} className="py-1">
           {filters.label && (
             <button onClick={() => { onFiltersChange({ ...filters, label: undefined }); setShowLabel(false); }}
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white/30 hover:bg-white/[0.06] hover:text-white/60 transition-colors">

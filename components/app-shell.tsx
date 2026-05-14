@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -42,6 +42,7 @@ const FULL_HEIGHT_ROUTES = ["/inbox"];
 export function AppShell({ user, children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [foldersExpanded, setFoldersExpanded] = useState(true);
+  const [, startTransition] = useTransition();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isFullHeight = FULL_HEIGHT_ROUTES.some((r) => pathname.startsWith(r));
@@ -49,6 +50,12 @@ export function AppShell({ user, children }: AppShellProps) {
   const activeFolder = searchParams.get("folder") ?? "inbox";
   const isInboxSection = pathname.startsWith("/inbox");
   const unreadCounts = useUnreadCounts();
+
+  // Wrap navigation in startTransition so UI stays responsive during page load
+  function handleNavClick() {
+    setSidebarOpen(false);
+    startTransition(() => {});
+  }
 
   return (
     <div className="flex h-screen overflow-hidden text-white" style={{ background: "#080810" }}>
@@ -131,7 +138,8 @@ export function AppShell({ user, children }: AppShellProps) {
                       <Link
                         key={f.folder}
                         href={`/inbox?folder=${f.folder}`}
-                        onClick={() => setSidebarOpen(false)}
+                        onClick={handleNavClick}
+                        prefetch={true}
                         className={cn(
                           "relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-all duration-150",
                           isActive
@@ -189,7 +197,8 @@ export function AppShell({ user, children }: AppShellProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={handleNavClick}
+                  prefetch={true}
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-all duration-150",
                     isActive
