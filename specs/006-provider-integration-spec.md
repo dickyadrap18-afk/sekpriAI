@@ -141,3 +141,116 @@ through `lib/providers/{gmail,office365,imap}/` and is invoked from
   download endpoint - decide later whether to support these or skip.
 - Whether to support OAuth-based IMAP (Microsoft IMAP with OAuth) is
   out of scope for the MVP; revisit if Yahoo deprecates app passwords.
+
+## 11. Email Deliverability
+
+Email deliverability is a first-class concern for sekpriAI, especially
+because the AI agent can compose and send emails autonomously. Poor
+deliverability damages the sender's domain reputation and erodes user trust.
+
+### 11.1 Deliverability module
+
+All deliverability logic lives in `lib/email/deliverability.ts`. It is
+imported exclusively by provider adapters — never by UI or feature layers.
+
+The module provides four capabilities:
+
+| Function | Purpose |
+|----------|---------|
+| `checkDeliverability(subject, body)` | Scans content for spam signals. Returns a score (0–100) and a list of warnings. Blocks sends that exceed the threshold. |
+| `sanitizeEmailContent(text)` | Strips AI writing artifacts: excessive punctuation, ALL CAPS, zero-width characters, repeated whitespace. |
+| `buildDeliverabilityHeaders(params)` | Returns a complete set of RFC-compliant SMTP headers that improve trust scores across Gmail, Outlook, Yahoo, and SpamAssassin. |
+| `generateMessageId(fromEmail)` | Produces a properly formatted `Message-ID` in `<timestamp.random@domain>` format. |
+| `checkRateLimit(accountId, limitPerHour)` | In-process rate limiter. Default: 30 emails/hour per account. Prevents volume spikes that trigger spam filters. |
+
+### 11.2 Content rules (enforced before every send)
+
+The following patterns cause a **hard block** (send is rejected):
+
+- Spam trigger phrases: "click here", "act now", "limited time", "free money",
+  "guaranteed", "no obligation", "risk free"
+- Lottery/prize phrases: "you've been selected", "claim your prize"
+- Pharmaceutical keywords: "viagra", "pharmacy", "prescription"
+- Financial spam: "bitcoin", "investment opportunity", "passive income"
+
+The following patterns produce a **warning** (send proceeds, logged):
+
+- Excessive ALL CAPS (≥10 consecutive uppercase characters)
+- Three or more consecutive exclamation marks (`!!!`)
+- Multiple dollar signs (`$$`)
+- More than five URLs in the body
+- Subject line longer than 78 characters
+- Body shorter than 5 words
+
+### 11.3 SMTP headers sent on every outbound message
+
+```
+Message-ID:              <timestamp.random@sender-domain>   (RFC 5322)
+Date:                    <current UTC>
+MIME-Version:            1.0
+X-Priority:              3                                   (Normal — not 1/High)
+X-MSMail-Priority:       Normal
+Importance:              Normal
+X-Mailer:                sekpriAI/1.0
+Auto-Submitted:          auto-generated  (or auto-replied for replies)
+X-Auto-Response-Suppress: OOF, AutoReply
+Precedence:              normal
+X-AI-Generated:          assisted        (only when AI drafted the email)
+```
+
+The `X-AI-Generated: assisted` header signals that a human reviewed the
+draft before sending. This is distinct from `generated` (fully autonomous)
+and is required for compliance with emerging AI transparency regulations
+(EU AI Act Article 52).
+
+### 11.4 Plain text requirement
+
+Every outbound email must include a `text/plain` part, even when HTML is
+present. HTML-only emails score significantly higher on SpamAssassin and
+are often rejected by corporate mail servers. The adapter automatically
+strips HTML tags to produce the plain text fallback if `bodyText` is not
+provided.
+
+### 11.5 AI prompt constraints
+
+AI prompts for `draft-reply` and `compose` are explicitly instructed to:
+
+- Write naturally, like a real person — not a template or marketing copy
+- Avoid all spam trigger words listed in §11.2
+- Avoid generic filler phrases ("I hope this email finds you well")
+- Keep sentence structure varied — not formulaic
+- Use plain text only (no HTML markup in the body)
+
+These constraints are enforced in the prompt text, not just in post-processing,
+because LLMs can produce spam-like patterns when given generic instructions.
+
+### 11.6 Rate limiting
+
+Default limits per account:
+
+| Limit | Value | Rationale |
+|-------|-------|-----------|
+| Emails per hour | 30 | Gmail flags accounts sending >500/day; 30/hr is safe for personal use |
+| Emails per day | (30 × 24 = 720 theoretical max) | Stays well below Gmail's 500/day limit for App Password accounts |
+
+Rate limits are enforced in `lib/email/deliverability.ts` using an
+in-process map. For multi-instance deployments, replace with a
+Redis-backed or Supabase-backed counter.
+
+### 11.7 Sender reputation best practices (operational)
+
+These are not enforced in code but must be followed operationally:
+
+1. **Warm up new accounts** — send a few manual emails and receive replies
+   before enabling AI autonomous sending.
+2. **Add sender to recipient's contacts** — Gmail and Outlook deprioritize
+   email from unknown senders.
+3. **Use a dedicated sending domain** for production — a custom domain with
+   SPF, DKIM, and DMARC records configured provides the strongest
+   deliverability guarantee. `@gmail.com` App Password accounts are
+   acceptable for personal use but not for high-volume or business use.
+4. **Monitor bounce rates** — high bounce rates (>2%) cause Gmail to
+   throttle or block the sending account.
+5. **For production scale** — replace SMTP with a dedicated transactional
+   email service (Resend, SendGrid, Postmark) that manages IP reputation,
+   DKIM signing, and bounce handling automatically.
