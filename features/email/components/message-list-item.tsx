@@ -69,6 +69,9 @@ export function MessageListItemComponent({
         initial={{ opacity: 0, x: -6 }}
         animate={{ opacity: isDragging ? 0.3 : 1, x: 0, scale: isDragging ? 0.98 : 1 }}
         transition={{ duration: 0.18 }}
+      >
+      {/* Native div handles drag — motion.div onDragStart conflicts with Framer's PanInfo signature */}
+      <div
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -163,6 +166,7 @@ export function MessageListItemComponent({
         >
           <Star className={cn("h-3.5 w-3.5", isStarred && "fill-[#c9a96e]")} />
         </button>
+      </div>
       </motion.div>
 
       <AnimatePresence>

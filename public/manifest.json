@@ -4,8 +4,8 @@
   "description": "AI-first universal email client with unified inbox, smart summaries, and Telegram integration.",
   "start_url": "/inbox",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#080810",
+  "theme_color": "#080810",
   "icons": [
     {
       "src": "/icons/icon.svg",
