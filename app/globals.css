@@ -66,10 +66,30 @@ body {
   @apply flex h-9 w-full rounded-md border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-1 text-sm text-foreground placeholder:text-[#444] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 transition-colors;
 }
 
-/* Subtle dot grid background — agentmail style */
+/* Subtle dot grid background */
 .bg-grid {
-  background-image: radial-gradient(circle, #ffffff08 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(circle, #ffffff0a 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Gold shimmer on hover */
+.gold-border {
+  border: 1px solid rgba(201,169,110,0.2);
+}
+.gold-border:hover {
+  border-color: rgba(201,169,110,0.4);
+  box-shadow: 0 0 20px rgba(201,169,110,0.06);
+}
+
+/* Shimmer animation for skeleton */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #111 25%, #1a1a1a 50%, #111 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
 }
 
 /* Subtle mesh for auth pages */
