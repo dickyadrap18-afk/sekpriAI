@@ -174,6 +174,33 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
         onClose={() => setDialogOpen(false)}
         onConnected={handleConnected}
       />
+
+      {/* AI Provider Status */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-white/80">AI Provider</h2>
+          <p className="text-xs text-white/30 mt-0.5">Active AI model used for summaries, drafts, and analysis.</p>
+        </div>
+        <div className="rounded-xl px-4 py-3 flex items-center gap-3"
+          style={{ border: "1px solid rgba(201,169,110,0.08)", background: "rgba(201,169,110,0.02)" }}>
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.15)" }}>
+            <span className="text-sm">🤖</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white/80 capitalize">
+              Gemini 2.0 Flash
+            </p>
+            <p className="text-xs text-white/25 mt-0.5">
+              Configured via <code className="text-[#c9a96e]/50">AI_PROVIDER</code> environment variable
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium flex-shrink-0"
+            style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}>
+            Active
+          </span>
+        </div>
+      </section>
     </div>
   );
 }

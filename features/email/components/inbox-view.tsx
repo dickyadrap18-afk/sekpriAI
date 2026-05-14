@@ -13,6 +13,7 @@ import { useAccounts } from "../hooks/use-accounts";
 import { useMessage } from "../hooks/use-message";
 import type { ComposeFormData, ComposeMode, InboxFilters, Message } from "../types";
 import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
 
 export function InboxView() {
   const searchParams = useSearchParams();
@@ -33,6 +34,9 @@ export function InboxView() {
   const { messages, loading, error, refetch, total } = useInbox(activeFilters, page);
   const { accounts } = useAccounts();
   const { message: selectedMessage, loading: detailLoading, error: detailError } = useMessage(selectedId);
+
+  // Check for accounts needing reconnection
+  const reconnectAccounts = accounts.filter((a) => (a as { sync_status?: string }).sync_status === "auth_required");
 
   function handleFiltersChange(f: InboxFilters) {
     // Keep folder from URL, only update search/label/priority/account
@@ -173,10 +177,24 @@ export function InboxView() {
   }, []);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col">
+      {/* Reconnect banner — shown when any account needs re-auth */}
+      {reconnectAccounts.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 text-xs border-b border-amber-500/20 bg-amber-500/[0.07] flex-shrink-0">
+          <span className="text-amber-400">⚠</span>
+          <span className="text-amber-300/80 flex-1">
+            {reconnectAccounts.map((a) => (a as { email_address: string }).email_address).join(", ")} need{reconnectAccounts.length === 1 ? "s" : ""} reconnection.
+          </span>
+          <a href="/settings" className="text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 transition-colors">
+            Fix in Settings →
+          </a>
+        </div>
+      )}
+
+      <div className="flex flex-1 min-h-0">
       {/* Left panel: list */}
       <div className={cn(
-        "flex flex-col w-full lg:w-80 lg:flex-shrink-0",
+        "relative flex flex-col w-full lg:w-80 lg:flex-shrink-0",
         selectedId && "hidden lg:flex"
       )}
         style={{
@@ -189,7 +207,7 @@ export function InboxView() {
           filters={activeFilters}
           onFiltersChange={handleFiltersChange}
           accounts={accounts}
-          onCompose={handleCompose}
+          onRefresh={refetch}
         />
 
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
@@ -209,6 +227,19 @@ export function InboxView() {
             onDelete={handleDelete}
             onMoveTo={handleMoveTo}
           />
+        </div>
+
+        {/* Compose — floating button, outside overflow-hidden containers */}
+        <div className="absolute bottom-4 right-4 z-20">
+          <button
+            onClick={handleCompose}
+            className="flex items-center gap-2 rounded-full h-9 px-4 text-xs font-semibold text-black shadow-lg transition-all hover:scale-[1.04] active:scale-[0.97]"
+            style={{ background: "linear-gradient(135deg, #e8d5b0 0%, #c9a96e 100%)" }}
+            aria-label="Compose new message"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Compose
+          </button>
         </div>
       </div>
 
@@ -239,6 +270,7 @@ export function InboxView() {
         onClose={() => setComposeOpen(false)}
         onSend={handleSend}
       />
+      </div>
     </div>
   );
 }

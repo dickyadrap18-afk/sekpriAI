@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Tag, Archive, Trash2, Mail, MailOpen, FolderInput, ChevronRight, Check } from "lucide-react";
 
@@ -32,12 +33,24 @@ const FOLDER_OPTIONS = [
   { key: "important", label: "Important" },
 ];
 
+const MENU_BG: React.CSSProperties = {
+  background: "rgba(14,12,22,0.98)",
+  backdropFilter: "blur(24px)",
+  WebkitBackdropFilter: "blur(24px)",
+  border: "1px solid rgba(201,169,110,0.18)",
+  boxShadow: "0 20px 60px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.05)",
+  borderRadius: 12,
+};
+
 export function MessageContextMenu({
   position, messageId, isRead, isStarred, currentLabels,
   onClose, onStar, onMarkRead, onLabelToggle, onArchive, onDelete, onMoveTo,
 }: MessageContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [submenu, setSubmenu] = useState<"label" | "move" | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -54,133 +67,178 @@ export function MessageContextMenu({
     };
   }, [onClose]);
 
-  const menuWidth = 192;
-  const menuHeight = 280;
-  const x = Math.min(position.x, window.innerWidth - menuWidth - 8);
-  const y = Math.min(position.y, window.innerHeight - menuHeight - 8);
+  if (!mounted) return null;
 
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, scale: 0.95, y: -4 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, y: -4 }}
-      transition={{ duration: 0.12 }}
-      style={{ position: "fixed", left: x, top: y, zIndex: 9999 }}
-      className="w-48 rounded-xl border border-white/[0.1] bg-[#0a0a0a] shadow-2xl overflow-visible py-1"
-      role="menu"
-    >
-      {/* Star */}
-      <button onClick={() => { onStar(messageId); onClose(); }} role="menuitem"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors">
-        <Star className={`h-3.5 w-3.5 flex-shrink-0 ${isStarred ? "text-amber-400 fill-amber-400" : "text-muted-foreground"}`} />
-        <span className="text-foreground/80">{isStarred ? "Remove star" : "Star"}</span>
-      </button>
+  // Clamp menu to viewport
+  const MENU_W = 200;
+  const MENU_H = 310;
+  const SUB_W = 180;
+  const mx = Math.min(Math.max(position.x, 8), window.innerWidth - MENU_W - 8);
+  const my = Math.min(Math.max(position.y, 8), window.innerHeight - MENU_H - 8);
+  // Submenu direction
+  const subRight = mx + MENU_W + SUB_W + 8 < window.innerWidth;
 
-      {/* Mark read/unread */}
-      <button onClick={() => { onMarkRead(messageId, !isRead); onClose(); }} role="menuitem"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors">
-        {isRead
-          ? <Mail className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-          : <MailOpen className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />}
-        <span className="text-foreground/80">{isRead ? "Mark as unread" : "Mark as read"}</span>
-      </button>
+  const menu = (
+    <AnimatePresence>
+      <motion.div
+        ref={ref}
+        key="ctx-menu"
+        initial={{ opacity: 0, scale: 0.95, y: -6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: -6 }}
+        transition={{ duration: 0.1, ease: "easeOut" }}
+        style={{
+          position: "fixed",
+          left: mx,
+          top: my,
+          width: MENU_W,
+          zIndex: 99999,
+          ...MENU_BG,
+        }}
+        className="py-1 overflow-visible"
+        role="menu"
+      >
+        {/* Star */}
+        <MI
+          icon={<Star className={`h-3.5 w-3.5 ${isStarred ? "fill-[#c9a96e] text-[#c9a96e]" : "text-white/40"}`} />}
+          label={isStarred ? "Remove star" : "Star"}
+          onClick={() => { onStar(messageId); onClose(); }}
+        />
 
-      <div className="my-1 border-t border-white/[0.06]" />
+        {/* Mark read/unread */}
+        <MI
+          icon={isRead
+            ? <Mail className="h-3.5 w-3.5 text-white/40" />
+            : <MailOpen className="h-3.5 w-3.5 text-white/40" />}
+          label={isRead ? "Mark as unread" : "Mark as read"}
+          onClick={() => { onMarkRead(messageId, !isRead); onClose(); }}
+        />
 
-      {/* Label as — with submenu */}
-      <div className="relative">
-        <button
+        <Sep />
+
+        {/* Label as — submenu */}
+        <div
+          className="relative"
           onMouseEnter={() => setSubmenu("label")}
           onMouseLeave={() => setSubmenu(null)}
-          role="menuitem"
-          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors"
         >
-          <Tag className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-          <span className="flex-1 text-left text-foreground/80">Label as</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-        </button>
-
-        <AnimatePresence>
+          <MI
+            icon={<Tag className="h-3.5 w-3.5 text-white/40" />}
+            label="Label as"
+            right={<ChevronRight className="h-3 w-3 text-white/30" />}
+          />
           {submenu === "label" && (
-            <motion.div
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -4 }}
-              transition={{ duration: 0.1 }}
-              onMouseEnter={() => setSubmenu("label")}
-              onMouseLeave={() => setSubmenu(null)}
-              className="absolute left-full top-0 ml-1 w-44 rounded-xl border border-white/[0.1] bg-[#0a0a0a] shadow-2xl overflow-hidden py-1 z-[10000]"
+            <div
+              style={{
+                position: "fixed",
+                top: my + 72, // approx row offset
+                left: subRight ? mx + MENU_W + 4 : mx - SUB_W - 4,
+                width: SUB_W,
+                zIndex: 100000,
+                ...MENU_BG,
+              }}
+              className="py-1"
             >
               {LABEL_OPTIONS.map((label) => {
                 const has = currentLabels.includes(label);
                 return (
-                  <button key={label}
+                  <button
+                    key={label}
                     onClick={() => { onLabelToggle(messageId, label); }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.07] transition-colors"
                   >
-                    <Check className={`h-3 w-3 flex-shrink-0 ${has ? "text-primary" : "text-transparent"}`} />
-                    <span className={has ? "text-primary font-medium" : "text-foreground/80"}>{label}</span>
+                    <Check className={`h-3 w-3 flex-shrink-0 ${has ? "text-[#c9a96e]" : "text-transparent"}`} />
+                    <span className={has ? "text-[#c9a96e] font-medium" : "text-white/75"}>{label}</span>
                   </button>
                 );
               })}
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
-      </div>
+        </div>
 
-      {/* Move to — with submenu */}
-      <div className="relative">
-        <button
+        {/* Move to — submenu */}
+        <div
+          className="relative"
           onMouseEnter={() => setSubmenu("move")}
           onMouseLeave={() => setSubmenu(null)}
-          role="menuitem"
-          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors"
         >
-          <FolderInput className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-          <span className="flex-1 text-left text-foreground/80">Move to</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-        </button>
-
-        <AnimatePresence>
+          <MI
+            icon={<FolderInput className="h-3.5 w-3.5 text-white/40" />}
+            label="Move to"
+            right={<ChevronRight className="h-3 w-3 text-white/30" />}
+          />
           {submenu === "move" && (
-            <motion.div
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -4 }}
-              transition={{ duration: 0.1 }}
-              onMouseEnter={() => setSubmenu("move")}
-              onMouseLeave={() => setSubmenu(null)}
-              className="absolute left-full top-0 ml-1 w-36 rounded-xl border border-white/[0.1] bg-[#0a0a0a] shadow-2xl overflow-hidden py-1 z-[10000]"
+            <div
+              style={{
+                position: "fixed",
+                top: my + 104, // approx row offset
+                left: subRight ? mx + MENU_W + 4 : mx - 148 - 4,
+                width: 148,
+                zIndex: 100000,
+                ...MENU_BG,
+              }}
+              className="py-1"
             >
               {FOLDER_OPTIONS.map((f) => (
-                <button key={f.key}
+                <button
+                  key={f.key}
                   onClick={() => { onMoveTo(messageId, f.key); onClose(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors text-foreground/80"
+                  className="flex w-full items-center px-3 py-2 text-xs text-white/75 hover:bg-white/[0.07] hover:text-white transition-colors"
                 >
                   {f.label}
                 </button>
               ))}
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
-      </div>
+        </div>
 
-      <div className="my-1 border-t border-white/[0.06]" />
+        <Sep />
 
-      {/* Archive */}
-      <button onClick={() => { onArchive(messageId); onClose(); }} role="menuitem"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors">
-        <Archive className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-        <span className="text-foreground/80">Archive</span>
-      </button>
+        {/* Archive */}
+        <MI
+          icon={<Archive className="h-3.5 w-3.5 text-white/40" />}
+          label="Archive"
+          onClick={() => { onArchive(messageId); onClose(); }}
+        />
 
-      {/* Delete */}
-      <button onClick={() => { onDelete(messageId); onClose(); }} role="menuitem"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors">
-        <Trash2 className="h-3.5 w-3.5 flex-shrink-0 text-red-400" />
-        <span className="text-red-400">Delete</span>
-      </button>
-    </motion.div>
+        {/* Delete */}
+        <MI
+          icon={<Trash2 className="h-3.5 w-3.5 text-red-400/70" />}
+          label="Delete"
+          labelCls="text-red-400"
+          onClick={() => { onDelete(messageId); onClose(); }}
+        />
+      </motion.div>
+    </AnimatePresence>
+  );
+
+  return createPortal(menu, document.body);
+}
+
+function MI({
+  icon, label, labelCls, right, onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  labelCls?: string;
+  right?: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      role="menuitem"
+      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs hover:bg-white/[0.07] transition-colors"
+    >
+      {icon}
+      <span className={`flex-1 text-left ${labelCls ?? "text-white/75"}`}>{label}</span>
+      {right}
+    </button>
+  );
+}
+
+function Sep() {
+  return (
+    <div style={{ height: 1, background: "rgba(201,169,110,0.1)", margin: "3px 8px" }} />
   );
 }

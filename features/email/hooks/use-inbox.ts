@@ -32,7 +32,12 @@ export function useInbox(filters: InboxFilters, page = 0) {
     // Folder logic
     switch (folder) {
       case "inbox":
-        query = query.eq("is_archived", false).eq("is_deleted", false);
+        // Exclude sent, draft, archived, deleted from inbox
+        query = query
+          .eq("is_archived", false)
+          .eq("is_deleted", false)
+          .not("labels", "ov", "{SENT}")
+          .not("labels", "ov", "{DRAFT}");
         break;
       case "starred":
         query = query.contains("labels", ["STARRED"]).eq("is_deleted", false);

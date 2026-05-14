@@ -5,7 +5,7 @@ import DOMPurify from "dompurify";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Archive, Trash2, Reply, Forward, ChevronDown,
-  Send, X, Cpu, ShieldAlert, PenLine, Tag, Plus, Loader2, RefreshCw, FileText,
+  Send, X, Cpu, ShieldAlert, PenLine, Tag, Plus, Loader2, RefreshCw, FileText, ArrowRight,
 } from "lucide-react";
 import { PriorityBadge } from "./priority-badge";
 import type { Message, ComposeFormData } from "../types";
@@ -305,6 +305,17 @@ export function MessageDetail({
                     {msg.ai_priority_reason}
                   </p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested next action — shown when AI has processed the email */}
+          {(msg as Message & { ai_suggested_action?: string }).ai_suggested_action && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-primary/15 bg-primary/[0.05] px-3.5 py-3">
+              <ArrowRight className="h-4 w-4 text-primary/60 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-semibold text-primary/50 uppercase tracking-widest mb-0.5">Suggested Action</p>
+                <p className="text-sm text-white/70">{(msg as Message & { ai_suggested_action?: string }).ai_suggested_action}</p>
               </div>
             </div>
           )}

@@ -25,7 +25,19 @@ interface MessageListProps {
   onMoveTo: (id: string, folder: string) => void;
 }
 
-function SkeletonRow({ opacity }: { opacity: number }) {
+// Fixed widths per row index — no Math.random() to avoid SSR/client hydration mismatch
+const SKELETON_WIDTHS = [
+  { w1: "62%", w2: "72%", w3: "45%" },
+  { w1: "48%", w2: "65%", w3: "38%" },
+  { w1: "70%", w2: "58%", w3: "52%" },
+  { w1: "55%", w2: "78%", w3: "40%" },
+  { w1: "42%", w2: "68%", w3: "55%" },
+  { w1: "66%", w2: "60%", w3: "35%" },
+  { w1: "50%", w2: "74%", w3: "48%" },
+];
+
+function SkeletonRow({ opacity, index }: { opacity: number; index: number }) {
+  const w = SKELETON_WIDTHS[index % SKELETON_WIDTHS.length];
   return (
     <div className="flex items-start gap-2.5 px-3 py-3 border-b border-white/[0.03]" style={{ opacity }}>
       <div className="mt-1.5 w-2 flex-shrink-0">
@@ -33,11 +45,11 @@ function SkeletonRow({ opacity }: { opacity: number }) {
       </div>
       <div className="flex-1 space-y-1.5">
         <div className="flex justify-between gap-4">
-          <div className="h-3 rounded-md bg-white/[0.06] shimmer" style={{ width: `${40 + Math.random() * 30}%` }} />
+          <div className="h-3 rounded-md bg-white/[0.06] shimmer" style={{ width: w.w1 }} />
           <div className="h-3 w-10 rounded-md bg-white/[0.04] shimmer" />
         </div>
-        <div className="h-2.5 rounded-md bg-white/[0.05] shimmer" style={{ width: `${55 + Math.random() * 25}%` }} />
-        <div className="h-2 rounded-md bg-white/[0.03] shimmer" style={{ width: `${30 + Math.random() * 30}%` }} />
+        <div className="h-2.5 rounded-md bg-white/[0.05] shimmer" style={{ width: w.w2 }} />
+        <div className="h-2 rounded-md bg-white/[0.03] shimmer" style={{ width: w.w3 }} />
       </div>
     </div>
   );
@@ -57,7 +69,7 @@ export function MessageList({
     return (
       <div className="flex-1 overflow-hidden">
         {Array.from({ length: 7 }).map((_, i) => (
-          <SkeletonRow key={i} opacity={1 - i * 0.11} />
+          <SkeletonRow key={i} opacity={1 - i * 0.11} index={i} />
         ))}
       </div>
     );

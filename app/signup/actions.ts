@@ -51,5 +51,5 @@ export async function signup(formData: FormData) {
 
   // If confirmation is disabled, user gets a session immediately
   revalidatePath("/", "layout");
-  redirect("/inbox");
+  redirect("/onboarding");  // New users go through onboarding flow
 }

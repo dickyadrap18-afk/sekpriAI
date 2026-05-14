@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Tag, SlidersHorizontal, X, Search } from "lucide-react";
+import { Tag, SlidersHorizontal, X, Search, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AccountSwitcher } from "./account-switcher";
 import type { InboxFilters, EmailAccount } from "../types";
 import { cn } from "@/lib/utils";
+import { showToast } from "@/components/toast";
 
 interface InboxToolbarProps {
   filters: InboxFilters;
   onFiltersChange: (f: InboxFilters) => void;
   accounts: EmailAccount[];
-  onCompose: () => void;
+  onRefresh?: () => void;
 }
 
 const PRIORITY_OPTIONS = [
@@ -22,11 +23,12 @@ const PRIORITY_OPTIONS = [
 
 const COMMON_LABELS = ["INBOX", "IMPORTANT", "NEWSLETTER", "SENT", "STARRED"];
 
-export function InboxToolbar({ filters, onFiltersChange, accounts, onCompose }: InboxToolbarProps) {
+export function InboxToolbar({ filters, onFiltersChange, accounts, onRefresh }: InboxToolbarProps) {
   const [showPriority, setShowPriority] = useState(false);
   const [showLabel, setShowLabel] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchVal, setSearchVal] = useState(filters.search || "");
+  const [syncing, setSyncing] = useState(false);
 
   const activeFiltersCount = [filters.priority, filters.label].filter(Boolean).length;
 
@@ -35,13 +37,32 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onCompose }: 
     onFiltersChange({ ...filters, search: val || undefined });
   }
 
+  async function handleSync() {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/accounts/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      const msg = data.synced > 0
+        ? `Synced ${data.synced} new message${data.synced > 1 ? "s" : ""}`
+        : "Inbox is up to date";
+      showToast(msg, "success");
+      onRefresh?.();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Sync failed", "error");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
-    <div style={{ borderBottom: "1px solid rgba(201,169,110,0.07)" }}>
-      {/* Row 1: Search + Compose */}
+    <div style={{ borderBottom: "1px solid rgba(201,169,110,0.07)" }} className="relative z-10 overflow-visible">
+      {/* Row 1: Search + Refresh */}
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2"
         style={{ background: "linear-gradient(180deg, rgba(201,169,110,0.03) 0%, transparent 100%)" }}>
 
-        {/* Search — takes all remaining space */}
+        {/* Search */}
         <div className={cn(
           "flex flex-1 items-center gap-2 rounded-lg border px-3 h-8 transition-all duration-200",
           searchFocused
@@ -69,15 +90,16 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onCompose }: 
           )}
         </div>
 
-        {/* Compose — always visible, fixed width */}
+        {/* Refresh */}
         <button
-          onClick={onCompose}
-          className="flex-shrink-0 flex items-center gap-1.5 rounded-lg h-8 px-3 text-xs font-semibold text-black transition-all hover:opacity-90 active:scale-[0.97]"
-          style={{ background: "linear-gradient(135deg, #e8d5b0 0%, #c9a96e 100%)" }}
-          aria-label="Compose new message"
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex-shrink-0 flex items-center justify-center rounded-lg h-8 w-8 transition-all hover:bg-white/[0.06] disabled:opacity-40"
+          style={{ border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}
+          title="Sync inbox"
+          aria-label="Sync inbox"
         >
-          <Plus className="h-3.5 w-3.5" />
-          <span>Compose</span>
+          <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
         </button>
       </div>
 
