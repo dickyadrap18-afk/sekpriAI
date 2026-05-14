@@ -129,10 +129,27 @@ export function InboxView() {
 
   const handleSend = useCallback(async (data: ComposeFormData) => {
     const supabase = createClient();
-
     const account = accounts.find((a) => a.id === data.from_account_id);
-    if (!account) {
-      showToast("No account selected", "error");
+    if (!account) { showToast("No account selected", "error"); return; }
+
+    // If scheduled, save to scheduled_emails table
+    if (data.schedule_for) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("scheduled_emails").insert({
+        user_id: user?.id,
+        account_id: data.from_account_id,
+        payload: {
+          to: data.to.split(",").map((e) => e.trim()).filter(Boolean),
+          cc: data.cc ? data.cc.split(",").map((e) => e.trim()).filter(Boolean) : [],
+          subject: data.subject,
+          body_text: data.body,
+        },
+        scheduled_for: new Date(data.schedule_for).toISOString(),
+        status: "pending",
+      });
+      if (error) { showToast("Failed to schedule: " + error.message, "error"); return; }
+      showToast(`Scheduled for ${new Date(data.schedule_for).toLocaleString()}`, "success");
+      setComposeOpen(false);
       return;
     }
 
@@ -147,17 +164,21 @@ export function InboxView() {
           subject: data.subject,
           body_text: data.body,
           in_reply_to_message_id: data.in_reply_to_message_id,
+          is_ai_generated: false,
         }),
       });
 
       const result = await res.json();
 
-      if (!res.ok) {
-        showToast(result.error || "Failed to send email", "error");
+      // High-risk approval gate
+      if (res.status === 403 && result.error === "approval_required") {
+        showToast(result.message, "error");
+        setComposeOpen(false);
         return;
       }
 
-      // Delete draft if this was a draft being sent
+      if (!res.ok) { showToast(result.error || "Failed to send email", "error"); return; }
+
       if (data.draft_id) {
         await supabase.from("messages").update({ is_deleted: true }).eq("id", data.draft_id);
       }

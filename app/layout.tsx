@@ -25,6 +25,20 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-background font-sans antialiased">
         <ToastProvider>{children}</ToastProvider>
+        {/* PWA Service Worker registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.warn('SW registration failed:', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

@@ -40,6 +40,7 @@ export async function processMessage(message: Message): Promise<void> {
         ai_priority_reason: priority.reason,
         ai_risk_level: risk.risk_level,
         ai_risk_reason: risk.reason,
+        ai_suggested_action: summary.suggested_action ?? null,
         ai_processed_at: new Date().toISOString(),
       })
       .eq("id", message.id);

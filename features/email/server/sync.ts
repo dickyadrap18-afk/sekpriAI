@@ -3,6 +3,8 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createAdapter } from "@/lib/providers";
 import { processUnprocessedMessages } from "@/features/ai/server/process";
+import { indexContent } from "@/features/rag/server/index";
+import { extractText } from "@/features/rag/server/extract";
 import type { EmailAccount } from "@/lib/supabase/types";
 import type { NormalizedMessage } from "@/lib/providers/types";
 
@@ -42,9 +44,9 @@ export async function syncAccount(account: EmailAccount): Promise<number> {
     throw err;
   }
 
-  // Upsert messages
+  // Upsert messages and handle attachments
   for (const msg of messages) {
-    await supabase.from("messages").upsert(
+    const { data: upserted } = await supabase.from("messages").upsert(
       {
         user_id: account.user_id,
         account_id: account.id,
@@ -64,7 +66,42 @@ export async function syncAccount(account: EmailAccount): Promise<number> {
         labels: msg.labels,
       },
       { onConflict: "account_id,provider_message_id" }
-    );
+    ).select("id").single();
+
+    // ── Attachment RAG indexing ──────────────────────────────────────────
+    // Index attachments (PDF, TXT, DOCX) into pgvector for RAG retrieval
+    if (upserted?.id && msg.attachments && msg.attachments.length > 0) {
+      for (const att of msg.attachments) {
+        if (!att.content) continue;
+        const ext = att.filename.split(".").pop()?.toLowerCase() ?? "";
+        if (!["pdf", "txt", "docx", "doc"].includes(ext)) continue;
+
+        try {
+          const text = await extractText(att.content, att.mimeType || "application/octet-stream", att.filename);
+          if (text && text.length > 50) {
+            await indexContent({
+              userId: account.user_id,
+              sourceType: "attachment",
+              sourceId: upserted.id,
+              text: `[Attachment: ${att.filename}]\n\n${text}`,
+            });
+
+            // Store attachment metadata
+            await supabase.from("attachments").upsert({
+              user_id: account.user_id,
+              message_id: upserted.id,
+              provider_attachment_id: att.providerAttachmentId || att.filename,
+              filename: att.filename,
+              mime_type: att.mimeType,
+              size_bytes: att.sizeBytes,
+              extracted_text: text.slice(0, 10000), // store first 10k chars
+            }, { onConflict: "message_id,provider_attachment_id" });
+          }
+        } catch {
+          // Attachment indexing failure is non-fatal
+        }
+      }
+    }
   }
 
   // Update last_synced_at

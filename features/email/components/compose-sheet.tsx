@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Send, PenLine, Loader2, ChevronDown } from "lucide-react";
+import { X, Send, PenLine, Loader2, ChevronDown, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ComposeFormData, ComposeMode } from "../types";
 import type { EmailAccount } from "../types";
@@ -32,6 +32,8 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
   const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleFor, setScheduleFor] = useState("");
   const [draftId, setDraftId] = useState<string | null>(prefill?.draft_id ?? null);
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
@@ -133,7 +135,11 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
     if (validate()) {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
       setSending(true);
-      onSend({ ...form, draft_id: draftId ?? undefined });
+      onSend({
+        ...form,
+        draft_id: draftId ?? undefined,
+        schedule_for: scheduleFor || undefined,
+      });
     }
   }
 
@@ -337,14 +343,70 @@ export function ComposeSheet({ open, mode, accounts, prefill, onClose, onSend }:
                   style={{ background: "linear-gradient(135deg, #e8d5b0 0%, #c9a96e 100%)" }}>
                   {sending
                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending...</>
-                    : <><Send className="h-3.5 w-3.5" /> Send</>
+                    : <><Send className="h-3.5 w-3.5" /> {scheduleFor ? "Schedule" : "Send"}</>
                   }
                 </button>
+
+                {/* Schedule toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowSchedule(!showSchedule)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                    showSchedule
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-white/[0.08] text-white/30 hover:text-white/60 hover:bg-white/[0.04]"
+                  )}
+                  title="Schedule send"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                </button>
+
                 <button type="button" onClick={onClose} disabled={sending}
                   className="inline-flex items-center rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors disabled:opacity-40">
                   Cancel
                 </button>
               </div>
+
+              {/* Schedule picker */}
+              <AnimatePresence>
+                {showSchedule && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="rounded-xl border border-primary/15 bg-primary/[0.04] p-3 space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-primary/60" />
+                        <p className="text-xs font-semibold text-primary/60">Schedule Send</p>
+                      </div>
+                      <input
+                        type="datetime-local"
+                        value={scheduleFor}
+                        onChange={(e) => setScheduleFor(e.target.value)}
+                        min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                        className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                      {scheduleFor && (
+                        <p className="text-xs text-primary/50">
+                          Will send on {new Date(scheduleFor).toLocaleString()}
+                        </p>
+                      )}
+                      {scheduleFor && (
+                        <button
+                          type="button"
+                          onClick={() => setScheduleFor("")}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Clear schedule
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </form>
           </motion.div>
         </div>
