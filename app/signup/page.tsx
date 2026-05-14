@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/submit-button";
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; message?: string }>;
 }) {
   const params = await searchParams;
 
@@ -20,12 +20,18 @@ export default async function SignupPage({
         </div>
 
         {params.error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
             {decodeURIComponent(params.error)}
           </div>
         )}
 
-        <form className="space-y-4">
+        {params.message && (
+          <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700" role="status">
+            {decodeURIComponent(params.message)}
+          </div>
+        )}
+
+        <form action={signup} method="POST" className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email
@@ -35,6 +41,7 @@ export default async function SignupPage({
               name="email"
               type="email"
               required
+              autoComplete="email"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="you@example.com"
             />
@@ -50,6 +57,7 @@ export default async function SignupPage({
               type="password"
               required
               minLength={6}
+              autoComplete="new-password"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="••••••••"
             />

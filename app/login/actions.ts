@@ -5,26 +5,43 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
+  const rawEmail = formData.get("email");
+  const rawPassword = formData.get("password");
+
+  // Validate input
   const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
+    email: rawEmail,
+    password: rawPassword,
   });
 
   if (!parsed.success) {
-    redirect("/login?error=Invalid+email+or+password+format");
+    const firstError = parsed.error.issues[0]?.message || "Invalid input";
+    redirect(`/login?error=${encodeURIComponent(firstError)}`);
   }
 
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    // Provide user-friendly error messages
+    let message = error.message;
+    if (message.includes("Invalid login credentials")) {
+      message = "Invalid email or password. Please check and try again.";
+    } else if (message.includes("Email not confirmed")) {
+      message = "Please confirm your email address first. Check your inbox for the confirmation link.";
+    } else if (message.includes("rate")) {
+      message = "Too many login attempts. Please wait a moment and try again.";
+    }
+    redirect(`/login?error=${encodeURIComponent(message)}`);
   }
 
   redirect("/inbox");
