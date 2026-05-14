@@ -3,6 +3,7 @@ import "server-only";
 import type { AIClient, AIProvider } from "./types";
 import { createClaudeClient } from "./claude";
 import { createOpenAIClient } from "./openai";
+import { createGeminiClient } from "./gemini";
 
 /**
  * Get the configured AI client.
@@ -18,20 +19,18 @@ export function getAIClient(override?: AIProvider): AIClient {
     case "openai":
       return createOpenAIClient();
     case "gemini":
-      // Gemini uses OpenAI-compatible API format
-      // For MVP, fall back to Claude if not configured
-      if (process.env.GEMINI_API_KEY) {
-        return createOpenAIClient(); // TODO: dedicated Gemini client
-      }
-      return createClaudeClient();
+      return createGeminiClient();
     case "deepseek":
       // DeepSeek uses OpenAI-compatible API format
       if (process.env.DEEPSEEK_API_KEY) {
-        return createOpenAIClient(); // TODO: dedicated DeepSeek client
+        return createOpenAIClient();
       }
-      return createClaudeClient();
+      return createGeminiClient(); // fallback
     default:
-      return createClaudeClient();
+      if (process.env.GEMINI_API_KEY) return createGeminiClient();
+      if (process.env.ANTHROPIC_API_KEY) return createClaudeClient();
+      if (process.env.OPENAI_API_KEY) return createOpenAIClient();
+      throw new Error("No AI provider API key configured");
   }
 }
 

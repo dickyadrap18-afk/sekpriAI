@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { encrypt } from "@/lib/security/crypto";
+import { validateOAuthState } from "@/lib/security/oauth-state";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const state = searchParams.get("state");
 
   if (error || !code) {
     return NextResponse.redirect(
       new URL("/settings?error=gmail_auth_failed", request.url)
+    );
+  }
+
+  // Validate OAuth state parameter (SEC-05)
+  const stateValid = await validateOAuthState(state);
+  if (!stateValid) {
+    return NextResponse.redirect(
+      new URL("/settings?error=gmail_auth_invalid_state", request.url)
     );
   }
 

@@ -21,10 +21,15 @@ export async function signup(formData: FormData) {
     redirect("/signup?error=Invalid+email+or+password+format");
   }
 
-  const { error } = await supabase.auth.signUp(parsed.data);
+  const { data, error } = await supabase.auth.signUp(parsed.data);
 
   if (error) {
-    redirect("/signup?error=Could+not+create+account");
+    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // If email confirmation is enabled, user won't have a session yet
+  if (data.user && !data.session) {
+    redirect("/login?error=Check+your+email+to+confirm+your+account");
   }
 
   redirect("/inbox");
