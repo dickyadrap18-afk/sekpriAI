@@ -44,11 +44,15 @@ export function MemoryView() {
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b" role="tablist" aria-label="Memory status filter">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
+            role="tab"
+            aria-selected={tab === t.key}
+            aria-controls={`tabpanel-${t.key}`}
+            id={`tab-${t.key}`}
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
               tab === t.key
@@ -62,6 +66,7 @@ export function MemoryView() {
       </div>
 
       {/* Content */}
+      <div role="tabpanel" id={`tabpanel-${tab}`} aria-labelledby={`tab-${tab}`}>
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -136,6 +141,7 @@ export function MemoryView() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

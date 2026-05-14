@@ -1,7 +1,14 @@
 import { signup } from "./actions";
 import Link from "next/link";
+import { SubmitButton } from "@/components/submit-button";
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const params = await searchParams;
+
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
@@ -11,6 +18,12 @@ export default function SignupPage() {
             Sign up to start using sekpriAI.
           </p>
         </div>
+
+        {params.error && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {decodeURIComponent(params.error)}
+          </div>
+        )}
 
         <form className="space-y-4">
           <div className="space-y-2">
@@ -42,12 +55,7 @@ export default function SignupPage() {
             />
           </div>
 
-          <button
-            formAction={signup}
-            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-          >
-            Sign Up
-          </button>
+          <SubmitButton>Sign Up</SubmitButton>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">

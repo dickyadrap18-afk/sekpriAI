@@ -92,6 +92,8 @@ export function WhatsAppMock() {
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#ece5dd]"
+        aria-live="polite"
+        aria-label="Chat messages"
       >
         {messages.map((msg) => (
           <div

@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     .from("messages")
     .select("*")
     .eq("id", parsed.data.message_id)
+    .eq("user_id", user.id)
     .single();
 
   if (!message) {
