@@ -72,14 +72,14 @@ archive, and delete using fixture data.
 **Goal**: real Gmail, Office 365, and IMAP connections.
 
 Tasks:
-- [ ] Define `EmailProviderAdapter` and shared types in `lib/providers/types.ts`.
-- [ ] Gmail OAuth + Gmail API adapter (sync, send, archive, delete, label).
-- [ ] Office 365 OAuth + Microsoft Graph adapter.
-- [ ] IMAP adapter with Yahoo/AOL presets and custom host form.
-- [ ] SMTP send for IMAP accounts.
-- [ ] Manual sync endpoint and 1-minute Vercel Cron sync.
-- [ ] Token encryption via `lib/security/crypto.ts`.
-- [ ] Reconnect banner when `sync_status = 'auth_required'`.
+- [x] Define `EmailProviderAdapter` and shared types in `lib/providers/types.ts`.
+- [x] Gmail OAuth + Gmail API adapter (sync, send, archive, delete, label).
+- [x] Office 365 OAuth + Microsoft Graph adapter.
+- [x] IMAP adapter with Yahoo/AOL presets and custom host form.
+- [x] SMTP send for IMAP accounts.
+- [x] Manual sync endpoint and 1-minute Vercel Cron sync.
+- [x] Token encryption via `lib/security/crypto.ts`.
+- [x] Reconnect banner when `sync_status = 'auth_required'`.
 
 **Acceptance**: All three provider types can connect and sync into the
 unified inbox; send and archive succeed end to end for each.
@@ -89,12 +89,12 @@ unified inbox; send and archive succeed end to end for each.
 **Goal**: AI summaries, drafts, priority, and risk.
 
 Tasks:
-- [ ] `features/ai/clients/*` for Claude (default), OpenAI, Gemini, DeepSeek.
-- [ ] Prompt modules per `specs/005-ai-agent-spec.md`.
-- [ ] Sync hook that triggers `summarize`, `priority`, `risk` after upsert.
-- [ ] AI draft reply endpoint and UI button.
-- [ ] AI summary card, priority badge, risk badge in message detail.
-- [ ] `ai_actions` audit logging.
+- [x] `features/ai/clients/*` for Claude (default), OpenAI, Gemini, DeepSeek.
+- [x] Prompt modules per `specs/005-ai-agent-spec.md`.
+- [x] Sync hook that triggers `summarize`, `priority`, `risk` after upsert.
+- [x] AI draft reply endpoint and UI button.
+- [x] AI summary card, priority badge, risk badge in message detail.
+- [x] `ai_actions` audit logging.
 
 **Acceptance**: New synced messages get AI summary + priority + risk
 within a few seconds; draft button produces a reasonable reply.

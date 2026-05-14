@@ -221,9 +221,9 @@ Phases follow `specs/009-implementation-timeline.md`:
 | 1     | App foundation              | ✅ Done   |
 | 2     | Database and RLS            | ✅ Done   |
 | 3     | Core email UI               | ✅ Done   |
-| 4     | Provider integration        | ⬜ Next   |
-| 5     | AI core                     | ⬜        |
-| 6     | Memory and RAG              | ⬜        |
+| 4     | Provider integration        | ✅ Done   |
+| 5     | AI core                     | ✅ Done   |
+| 6     | Memory and RAG              | ⬜ Next   |
 | 7     | Telegram and WhatsApp mock  | ⬜        |
 | 8     | Scheduler and approval      | ⬜        |
 | 9     | Testing                     | ⬜        |
