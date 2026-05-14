@@ -23,34 +23,28 @@ interface SettingsViewProps {
 }
 
 function SyncStatusBadge({ status }: { status: string }) {
-  if (status === "syncing") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs text-blue-400">
-        <RefreshCw className="h-3 w-3 animate-spin" />
-        Syncing
-      </span>
-    );
-  }
-  if (status === "error") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-xs text-red-400">
-        <AlertCircle className="h-3 w-3" />
-        Error
-      </span>
-    );
-  }
-  if (status === "idle") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-xs text-green-400">
-        <CheckCircle2 className="h-3 w-3" />
-        Connected
-      </span>
-    );
-  }
+  if (status === "syncing") return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+      style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa" }}>
+      <RefreshCw className="h-3 w-3 animate-spin" /> Syncing
+    </span>
+  );
+  if (status === "error") return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+      style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171" }}>
+      <AlertCircle className="h-3 w-3" /> Error
+    </span>
+  );
+  if (status === "idle") return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+      style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}>
+      <CheckCircle2 className="h-3 w-3" /> Connected
+    </span>
+  );
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] border border-white/[0.1] px-2 py-0.5 text-xs text-muted-foreground">
-      <Clock className="h-3 w-3" />
-      {status}
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)" }}>
+      <Clock className="h-3 w-3" /> {status}
     </span>
   );
 }
@@ -94,25 +88,23 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
 
   return (
     <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your connected email accounts and preferences.
-        </p>
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold text-white">Settings</h1>
+        <p className="text-sm text-white/35">Manage your connected email accounts and preferences.</p>
       </div>
 
       {/* Connected Accounts */}
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold">Connected Accounts</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Add email accounts to sync into your unified inbox.
-            </p>
+            <h2 className="text-sm font-semibold text-white/80">Connected Accounts</h2>
+            <p className="text-xs text-white/30 mt-0.5">Add email accounts to sync into your unified inbox.</p>
           </div>
           <button
             onClick={() => setDialogOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-black transition-all hover:scale-[1.02]"
+            style={{ background: "linear-gradient(135deg, #e8d5b0 0%, #c9a96e 100%)" }}
           >
             <Plus className="h-3.5 w-3.5" />
             Add Account
@@ -120,33 +112,43 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
         </div>
 
         {accounts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/[0.1] p-8 text-center space-y-2">
-            <Mail className="h-8 w-8 mx-auto text-muted-foreground/30" />
-            <p className="text-sm font-medium text-muted-foreground">No accounts connected</p>
-            <p className="text-xs text-muted-foreground/70">
-              Connect an IMAP/SMTP account to start syncing emails.
-            </p>
+          <div className="rounded-xl p-10 text-center space-y-3"
+            style={{ border: "1px dashed rgba(201,169,110,0.15)", background: "rgba(201,169,110,0.02)" }}>
+            <div className="h-12 w-12 rounded-2xl mx-auto flex items-center justify-center"
+              style={{ background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)" }}>
+              <Mail className="h-5 w-5 text-[#c9a96e]/40" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white/40">No accounts connected</p>
+              <p className="text-xs text-white/20 mt-0.5">Connect an IMAP/SMTP account to start syncing emails.</p>
+            </div>
             <button
               onClick={() => setDialogOpen(true)}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-[#c9a96e]/60 hover:text-[#c9a96e] transition-colors"
+              style={{ border: "1px solid rgba(201,169,110,0.15)" }}
             >
               <Plus className="h-3.5 w-3.5" />
               Connect your first account
             </button>
           </div>
         ) : (
-          <div className="rounded-xl border border-white/[0.07] divide-y divide-white/[0.05] overflow-hidden">
-            {accounts.map((account) => (
-              <div key={account.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+          <div className="rounded-xl overflow-hidden"
+            style={{ border: "1px solid rgba(201,169,110,0.08)" }}>
+            {accounts.map((account, i) => (
+              <div
+                key={account.id}
+                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.02]"
+                style={i > 0 ? { borderTop: "1px solid rgba(255,255,255,0.04)" } : {}}
+              >
                 <ProviderIcon provider={account.provider} emailAddress={account.email_address} size={36} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate text-foreground">
+                  <p className="text-sm font-medium text-white/85 truncate">
                     {account.display_name || account.email_address}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-xs text-muted-foreground truncate">{account.email_address}</p>
-                    <span className="text-muted-foreground/30">·</span>
-                    <p className="text-xs text-muted-foreground/60 flex-shrink-0">{formatLastSynced(account.last_synced_at)}</p>
+                    <p className="text-xs text-white/30 truncate">{account.email_address}</p>
+                    <span className="text-white/15">·</span>
+                    <p className="text-xs text-white/20 flex-shrink-0">{formatLastSynced(account.last_synced_at)}</p>
                   </div>
                 </div>
                 <SyncStatusBadge status={account.sync_status} />
@@ -154,8 +156,8 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
                   onClick={() => handleDelete(account.id)}
                   disabled={deletingId === account.id}
                   className={cn(
-                    "rounded-lg p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors",
-                    deletingId === account.id && "opacity-50 cursor-not-allowed"
+                    "rounded-lg p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors",
+                    deletingId === account.id && "opacity-40 cursor-not-allowed"
                   )}
                   aria-label={`Remove ${account.email_address}`}
                 >
@@ -167,7 +169,6 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
         )}
       </section>
 
-      {/* Connect IMAP dialog */}
       <ConnectImapDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}

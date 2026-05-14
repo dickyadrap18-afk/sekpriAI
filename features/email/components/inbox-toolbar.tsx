@@ -44,7 +44,8 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onCompose }: 
 
         {/* Search */}
         <div className={cn(
-          "flex-1 flex items-center gap-2 rounded-lg border px-3 h-8 transition-all duration-200",
+          "flex items-center gap-2 rounded-lg border px-3 h-8 transition-all duration-200 min-w-0",
+          "w-full max-w-[200px] sm:max-w-xs",
           searchFocused
             ? "border-[#c9a96e]/30 bg-[#c9a96e]/[0.04]"
             : "border-white/[0.07] bg-white/[0.03]"
@@ -67,7 +68,7 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onCompose }: 
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
           {accounts.length > 0 && (
             <AccountSwitcher
               accounts={accounts}
