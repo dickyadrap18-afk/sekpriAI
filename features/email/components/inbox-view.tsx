@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { showToast } from "@/components/toast";
@@ -13,29 +13,33 @@ import { useAccounts } from "../hooks/use-accounts";
 import { useMessage } from "../hooks/use-message";
 import type { ComposeFormData, ComposeMode, InboxFilters, Message } from "../types";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 export function InboxView() {
   const searchParams = useSearchParams();
 
-  // Folder comes from URL: /inbox?folder=starred
   const activeFolder = (searchParams.get("folder") ?? "inbox") as NonNullable<InboxFilters["folder"]>;
+  // Support direct message link from memory page: /inbox?message=<id>
+  const directMessageId = searchParams.get("message");
 
   const [filters, setFilters] = useState<InboxFilters>({});
   const [page, setPage] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(directMessageId);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeMode, setComposeMode] = useState<ComposeMode>("new");
   const [composePrefill, setComposePrefill] = useState<Partial<ComposeFormData>>({});
 
-  // Merge URL folder into filters
   const activeFilters: InboxFilters = { ...filters, folder: activeFolder };
 
-  const { messages, loading, error, refetch, total } = useInbox(activeFilters, page);
+  const { messages, loading, error, refetch, total, hasNewMessages } = useInbox(activeFilters, page);
   const { accounts } = useAccounts();
   const { message: selectedMessage, loading: detailLoading, error: detailError } = useMessage(selectedId);
 
-  // Check for accounts needing reconnection
+  // Auto-select direct message link
+  useEffect(() => {
+    if (directMessageId) setSelectedId(directMessageId);
+  }, [directMessageId]);
+
   const reconnectAccounts = accounts.filter((a) => (a as { sync_status?: string }).sync_status === "auth_required");
 
   function handleFiltersChange(f: InboxFilters) {
@@ -199,7 +203,7 @@ export function InboxView() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Reconnect banner — shown when any account needs re-auth */}
+      {/* Reconnect banner */}
       {reconnectAccounts.length > 0 && (
         <div className="flex items-center gap-2 px-4 py-2 text-xs border-b border-amber-500/20 bg-amber-500/[0.07] flex-shrink-0">
           <span className="text-amber-400">⚠</span>
@@ -210,6 +214,17 @@ export function InboxView() {
             Fix in Settings →
           </a>
         </div>
+      )}
+
+      {/* New messages banner — shown when realtime detects new email on page > 0 */}
+      {hasNewMessages && page > 0 && (
+        <button
+          onClick={() => { setPage(0); refetch(); }}
+          className="flex items-center justify-center gap-2 px-4 py-2 text-xs border-b border-primary/20 bg-primary/[0.07] flex-shrink-0 w-full hover:bg-primary/[0.12] transition-colors"
+        >
+          <RefreshCw className="h-3 w-3 text-primary animate-spin" />
+          <span className="text-primary/80">New messages — click to refresh</span>
+        </button>
       )}
 
       <div className="flex flex-1 min-h-0">

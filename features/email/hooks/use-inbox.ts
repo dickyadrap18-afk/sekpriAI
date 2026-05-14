@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { escapePostgrestLike } from "@/lib/utils/escape-postgrest";
 import type { MessageListItem, InboxFilters } from "../types";
@@ -13,11 +13,11 @@ export function useInbox(filters: InboxFilters, page = 0) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
 
   const fetchMessages = useCallback(async () => {
     const supabase = createClient();
-
-    // Base filter depends on folder
     const folder = filters.folder ?? "inbox";
 
     let query = supabase
@@ -29,10 +29,8 @@ export function useInbox(filters: InboxFilters, page = 0) {
       .order("received_at", { ascending: false })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-    // Folder logic
     switch (folder) {
       case "inbox":
-        // Exclude sent, draft, archived, deleted from inbox
         query = query
           .eq("is_archived", false)
           .eq("is_deleted", false)
@@ -61,24 +59,15 @@ export function useInbox(filters: InboxFilters, page = 0) {
         query = query.eq("is_archived", false).eq("is_deleted", false);
     }
 
-    if (filters.account_id) {
-      query = query.eq("account_id", filters.account_id);
-    }
-
+    if (filters.account_id) query = query.eq("account_id", filters.account_id);
     if (filters.search) {
       const escaped = escapePostgrestLike(filters.search);
       query = query.or(
         `subject.ilike.%${escaped}%,from_email.ilike.%${escaped}%,from_name.ilike.%${escaped}%,snippet.ilike.%${escaped}%`
       );
     }
-
-    if (filters.label) {
-      query = query.contains("labels", [filters.label]);
-    }
-
-    if (filters.priority) {
-      query = query.eq("ai_priority", filters.priority);
-    }
+    if (filters.label) query = query.contains("labels", [filters.label]);
+    if (filters.priority) query = query.eq("ai_priority", filters.priority);
 
     const { data, error: fetchError, count } = await query;
 
@@ -88,33 +77,51 @@ export function useInbox(filters: InboxFilters, page = 0) {
       setTotal(0);
     } else {
       setError(null);
-      // Sort: starred first, then by received_at desc
       const sorted = ((data as MessageListItem[]) ?? []).sort((a, b) => {
         const aStarred = (a.labels ?? []).includes("STARRED") ? 1 : 0;
         const bStarred = (b.labels ?? []).includes("STARRED") ? 1 : 0;
         if (bStarred !== aStarred) return bStarred - aStarred;
-        return 0; // already ordered by received_at from DB
+        return 0;
       });
       setMessages(sorted);
       setTotal(count ?? 0);
+      setHasNewMessages(false);
     }
     setLoading(false);
   }, [filters.account_id, filters.search, filters.label, filters.priority, filters.folder, page]);
 
   useEffect(() => {
     setLoading(true);
-    startTransition(() => {
-      fetchMessages();
-    });
+    startTransition(() => { fetchMessages(); });
   }, [fetchMessages]);
 
+  // Supabase Realtime — auto-refresh on new messages
+  useEffect(() => {
+    const supabase = createClient();
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+
+    const channel = supabase
+      .channel("inbox-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          setHasNewMessages(true);
+          if (page === 0) startTransition(() => { fetchMessages(); });
+        }
+        if (payload.eventType === "UPDATE" || payload.eventType === "DELETE") {
+          startTransition(() => { fetchMessages(); });
+        }
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchMessages, page]);
+
   const refetch = useCallback(() => {
-    startTransition(() => {
-      fetchMessages();
-    });
+    startTransition(() => { fetchMessages(); });
   }, [fetchMessages]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  return { messages, loading: loading || isPending, error, refetch, total, totalPages };
+  return { messages, loading: loading || isPending, error, refetch, total, totalPages, hasNewMessages };
 }

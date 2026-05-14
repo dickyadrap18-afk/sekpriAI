@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/app/(app)/actions";
 import { AmbientBg } from "@/components/ambient-bg";
+import { useUnreadCounts } from "@/features/email/hooks/use-unread-counts";
 
 interface AppShellProps {
   user: User;
@@ -47,6 +48,7 @@ export function AppShell({ user, children }: AppShellProps) {
 
   const activeFolder = searchParams.get("folder") ?? "inbox";
   const isInboxSection = pathname.startsWith("/inbox");
+  const unreadCounts = useUnreadCounts();
 
   return (
     <div className="flex h-screen overflow-hidden text-white" style={{ background: "#080810" }}>
@@ -145,7 +147,26 @@ export function AppShell({ user, children }: AppShellProps) {
                           "h-3.5 w-3.5 flex-shrink-0",
                           isActive ? "text-[#c9a96e]" : "text-white/25"
                         )} />
-                        <span className="text-sm">{f.label}</span>
+                        <span className="text-sm flex-1">{f.label}</span>
+                        {/* Unread count badge */}
+                        {f.folder === "inbox" && unreadCounts.inbox > 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
+                            style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e", border: "1px solid rgba(201,169,110,0.3)" }}>
+                            {unreadCounts.inbox > 99 ? "99+" : unreadCounts.inbox}
+                          </span>
+                        )}
+                        {f.folder === "starred" && unreadCounts.starred > 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
+                            style={{ background: "rgba(201,169,110,0.15)", color: "#c9a96e80", border: "1px solid rgba(201,169,110,0.2)" }}>
+                            {unreadCounts.starred}
+                          </span>
+                        )}
+                        {f.folder === "important" && unreadCounts.important > 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
+                            style={{ background: "rgba(248,113,113,0.1)", color: "#f87171", border: "1px solid rgba(248,113,113,0.2)" }}>
+                            {unreadCounts.important}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}

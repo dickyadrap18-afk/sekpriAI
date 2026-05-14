@@ -20,7 +20,6 @@ const sendSchema = z.object({
   body_html: z.string().optional(),
   in_reply_to_message_id: z.string().optional(),
   is_ai_generated: z.boolean().optional(),
-  // If provided, skip approval check (user explicitly approved)
   approval_token: z.string().optional(),
 });
 
@@ -44,7 +43,6 @@ export async function POST(request: NextRequest) {
 
   const { data } = parsed;
 
-  // Fetch the account (RLS ensures ownership)
   const { data: account, error: accError } = await supabase
     .from("email_accounts")
     .select("*")
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
 
-  // ── Safety gate: check if original message requires approval ──────────
+  // Safety gate: block high-risk replies without approval
   if (data.in_reply_to_message_id && !data.approval_token) {
     const { data: originalMsg } = await supabase
       .from("messages")
@@ -65,7 +63,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (originalMsg?.ai_risk_level === "high") {
-      // Create an approval request and block send
       await supabase.from("approval_requests").insert({
         user_id: user.id,
         message_id: data.in_reply_to_message_id,
@@ -82,13 +79,12 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         error: "approval_required",
-        message: `This email is flagged as high-risk: "${originalMsg.ai_risk_reason}". An approval request has been created. Please review before sending.`,
+        message: `This email is flagged as high-risk: "${originalMsg.ai_risk_reason}". An approval request has been created.`,
         requires_approval: true,
       }, { status: 403 });
     }
   }
 
-  // Send via provider adapter
   try {
     const adapter = createAdapter(account as EmailAccount);
     const result = await adapter.sendMessage({
@@ -102,12 +98,12 @@ export async function POST(request: NextRequest) {
       isAiGenerated: data.is_ai_generated,
     });
 
-    // Save sent message to DB so it appears in Sent folder
+    // Save to DB so it appears in Sent folder
     const { error: insertError } = await supabase.from("messages").insert({
       user_id: user.id,
       account_id: data.account_id,
       provider: account.provider,
-      provider_message_id: (result as Record<string, unknown>)?.provider_message_id as string
+      provider_message_id: (result as unknown as Record<string, unknown>)?.provider_message_id as string
         ?? `sent-local-${Date.now()}`,
       from_email: account.email_address,
       from_name: account.display_name ?? account.email_address,
@@ -124,88 +120,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (insertError) {
-      console.error("[send] DB insert error:", insertError.message);
-    }
-
-    console.log("[send] Success:", JSON.stringify(result));
-    return NextResponse.json({ success: true, ...result });
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : "Send failed";
-    console.error("[send] Error:", errMsg);
-    return NextResponse.json({ error: errMsg }, { status: 500 });
-  }
-}
-
-export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const body = await request.json();
-  const parsed = sendSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const { data } = parsed;
-
-  // Fetch the account (RLS ensures ownership)
-  const { data: account, error: accError } = await supabase
-    .from("email_accounts")
-    .select("*")
-    .eq("id", data.account_id)
-    .single();
-
-  if (accError || !account) {
-    return NextResponse.json({ error: "Account not found" }, { status: 404 });
-  }
-
-  // ── Safety gate: check if original message requires approval ──────────
-  try {
-    const adapter = createAdapter(account as EmailAccount);
-    const result = await adapter.sendMessage({
-      accountId: data.account_id,
-      to: data.to,
-      cc: data.cc,
-      subject: data.subject,
-      bodyText: data.body_text,
-      bodyHtml: data.body_html,
-      inReplyToMessageId: data.in_reply_to_message_id,
-    });
-
-    // Save sent message to DB so it appears in Sent folder
-    // Done server-side so user_id is always correct (from auth session)
-    const { error: insertError } = await supabase.from("messages").insert({
-      user_id: user.id,
-      account_id: data.account_id,
-      provider: account.provider,
-      provider_message_id: (result as Record<string, unknown>)?.provider_message_id as string
-        ?? `sent-local-${Date.now()}`,
-      from_email: account.email_address,
-      from_name: account.display_name ?? account.email_address,
-      to_emails: data.to,
-      cc_emails: data.cc ?? [],
-      subject: data.subject,
-      body_text: data.body_text ?? "",
-      snippet: (data.body_text ?? "").slice(0, 200),
-      labels: ["SENT"],
-      is_read: true,
-      is_archived: false,
-      is_deleted: false,
-      received_at: new Date().toISOString(),
-    });
-
-    if (insertError) {
-      // Log but don't fail — email was sent, DB record is best-effort
       console.error("[send] DB insert error:", insertError.message);
     }
 
