@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+// THREE.Clock is deprecated — using performance.now() directly
 
 export function HeroCanvas() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -106,13 +107,13 @@ export function HeroCanvas() {
     };
     window.addEventListener("resize", handleResize);
 
-    // Animate
+    // Animate — pakai performance.now() langsung, THREE.Clock deprecated
     let frameId: number;
-    const clock = new THREE.Clock();
+    let startTime = performance.now();
 
     const animate = () => {
       frameId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
+      const t = (performance.now() - startTime) / 1000; // seconds
 
       particles.rotation.y = t * 0.04 + mouseX * 0.08;
       particles.rotation.x = t * 0.02 + mouseY * 0.05;
@@ -132,6 +133,7 @@ export function HeroCanvas() {
 
     return () => {
       cancelAnimationFrame(frameId);
+      startTime = 0; // cleanup
       window.removeEventListener("mousemove", handleMouse);
       window.removeEventListener("resize", handleResize);
       renderer.dispose();
