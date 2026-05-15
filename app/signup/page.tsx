@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -10,6 +10,35 @@ function SignupForm() {
   const searchParams = useSearchParams();
   const [error, setError] = useState(searchParams.get("error") || "");
   const [loading, setLoading] = useState(false);
+
+  // Handle OAuth callback code
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) {
+      handleOAuthCallback(code);
+    }
+  }, [searchParams]);
+
+  async function handleOAuthCallback(code: string) {
+    setLoading(true);
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      
+      if (error) {
+        setError("Authentication failed. Please try again.");
+        setLoading(false);
+      } else {
+        router.push("/inbox");
+        router.refresh();
+      }
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,10 +73,12 @@ function SignupForm() {
     try {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
+          // Supabase will redirect here after Google auth completes.
+          // This must be listed in Supabase Dashboard → Auth → URL Configuration → Redirect URLs.
           redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: "offline",
@@ -60,7 +91,6 @@ function SignupForm() {
         setError("Failed to initiate Google signup.");
         setLoading(false);
       }
-      // If no error, user will be redirected to Google
     } catch {
       setError("Network error. Please check your connection.");
       setLoading(false);

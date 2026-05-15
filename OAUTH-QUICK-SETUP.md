@@ -29,11 +29,13 @@ sekpri-ai-pi.vercel.app
 
 ### Authorized Redirect URIs
 ```
-https://sekpri-ai-pi.vercel.app/api/auth/callback/google
+https://sekpri-ai-pi.vercel.app/auth/callback
 https://sekpri-ai-pi.vercel.app/api/auth/callback/gmail
-http://localhost:3000/api/auth/callback/google
+http://localhost:3000/auth/callback
 http://localhost:3000/api/auth/callback/gmail
 ```
+
+**Note**: `/auth/callback` is for user authentication (signup/login), `/api/auth/callback/gmail` is for Gmail integration.
 
 ---
 

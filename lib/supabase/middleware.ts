@@ -2,6 +2,25 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
+  // ── OAuth code forwarding ──────────────────────────────────────────────────
+  // Supabase redirects back to the Site URL with ?code=... appended.
+  // If the code lands on any page other than /auth/callback, forward it there
+  // so exchangeCodeForSession() runs in the right server-side handler.
+  const code = searchParams.get("code");
+  if (code && pathname !== "/auth/callback") {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    // Keep only the code (and optional next) — drop everything else
+    callbackUrl.search = "";
+    callbackUrl.searchParams.set("code", code);
+    const next = searchParams.get("next");
+    if (next) callbackUrl.searchParams.set("next", next);
+    return NextResponse.redirect(callbackUrl);
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -40,13 +59,15 @@ export async function updateSession(request: NextRequest) {
       }
     });
     // Redirect to login only if not already on a public route
-    const pathname = request.nextUrl.pathname;
     const isPublic =
       pathname === "/" ||
       pathname === "/login" ||
       pathname === "/signup" ||
       pathname === "/onboarding" ||
-      pathname.startsWith("/api/");
+      pathname === "/auth/callback" ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/privacy") ||
+      pathname.startsWith("/terms");
     if (!isPublic) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
@@ -60,11 +81,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   const isPublicRoute =
-    request.nextUrl.pathname === "/" ||
-    request.nextUrl.pathname === "/login" ||
-    request.nextUrl.pathname === "/signup" ||
-    request.nextUrl.pathname === "/onboarding" ||
-    request.nextUrl.pathname.startsWith("/api/");
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/onboarding" ||
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
@@ -72,7 +96,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup")) {
+  if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/inbox";
     return NextResponse.redirect(url);
