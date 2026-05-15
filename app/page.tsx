@@ -255,10 +255,20 @@ export default function HomePage() {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="relative z-10 border-t border-white/[0.05] px-6 py-7 max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="sekpriAI" className="h-6 w-auto object-contain opacity-40" />
-        <p className="text-xs text-white/20">© 2026 sekpriAI. All rights reserved.</p>
+      <footer className="relative z-10 border-t border-white/[0.05] px-6 py-7 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="sekpriAI" className="h-6 w-auto object-contain opacity-40" />
+          <div className="flex items-center gap-6 text-xs">
+            <Link href="/privacy" className="text-white/30 hover:text-white/60 transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-white/30 hover:text-white/60 transition-colors">
+              Terms of Service
+            </Link>
+            <p className="text-white/20">© 2026 sekpriAI</p>
+          </div>
+        </div>
       </footer>
     </main>
   );

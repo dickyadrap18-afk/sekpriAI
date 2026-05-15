@@ -32,6 +32,20 @@ This guide explains how to configure Google OAuth for both:
   - `https://your-domain.com/api/auth/callback/gmail` (production Gmail)
   - `https://your-supabase-project.supabase.co/auth/v1/callback` (Supabase)
 
+### OAuth Consent Screen
+Configure the OAuth consent screen with:
+- **App name**: sekpriAI
+- **User support email**: Your support email
+- **App logo**: Upload your logo (120x120px minimum)
+- **Application home page**: `https://your-domain.com`
+- **Application privacy policy link**: `https://your-domain.com/privacy`
+- **Application terms of service link**: `https://your-domain.com/terms`
+- **Authorized domains**: Add your domain (e.g., `your-domain.com`)
+
+**Important**: Privacy Policy and Terms of Service pages are **required** for OAuth verification. These pages are already created at:
+- `/privacy` - Privacy Policy page
+- `/terms` - Terms of Service page
+
 ### Required Scopes
 For user authentication:
 - `openid`
