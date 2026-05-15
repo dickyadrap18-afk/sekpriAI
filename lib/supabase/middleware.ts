@@ -25,36 +25,38 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // getUser() may throw "Invalid Refresh Token" when the stored token has
-  // expired or been revoked (e.g., user signed out on another device, or
-  // Supabase rotated the token). Treat this as unauthenticated — clear the
-  // stale auth cookies and redirect to login.
-  let user = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-  } catch (err: unknown) {
-    const isAuthError =
-      err !== null &&
-      typeof err === "object" &&
-      "__isAuthError" in err &&
-      (err as { __isAuthError: boolean }).__isAuthError;
+  // getUser() returns { data: { user }, error } — never throws.
+  // "Invalid Refresh Token" comes back as error.code === 'refresh_token_not_found'
+  // Treat it as unauthenticated and clear stale cookies silently.
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-    if (isAuthError) {
-      // Clear stale auth cookies so the browser doesn't keep retrying
-      const clearResponse = NextResponse.redirect(
-        new URL("/login", request.url)
-      );
-      // Delete all Supabase auth cookies
+  // If refresh token is invalid/expired, clear stale sb- cookies
+  // so the browser stops retrying with the bad token.
+  if (error && (error as { code?: string }).code === "refresh_token_not_found") {
+    const response = NextResponse.next({ request });
+    request.cookies.getAll().forEach(({ name }) => {
+      if (name.startsWith("sb-")) {
+        response.cookies.delete(name);
+      }
+    });
+    // Redirect to login only if not already on a public route
+    const pathname = request.nextUrl.pathname;
+    const isPublic =
+      pathname === "/" ||
+      pathname === "/login" ||
+      pathname === "/signup" ||
+      pathname === "/onboarding" ||
+      pathname.startsWith("/api/");
+    if (!isPublic) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      const redirect = NextResponse.redirect(url);
       request.cookies.getAll().forEach(({ name }) => {
-        if (name.startsWith("sb-")) {
-          clearResponse.cookies.delete(name);
-        }
+        if (name.startsWith("sb-")) redirect.cookies.delete(name);
       });
-      return clearResponse;
+      return redirect;
     }
-    // Non-auth errors: log and treat as unauthenticated
-    console.error("[middleware] getUser error:", err);
+    return response;
   }
 
   const isPublicRoute =
