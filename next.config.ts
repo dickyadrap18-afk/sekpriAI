@@ -4,11 +4,20 @@ import path from "path";
 const nextConfig: NextConfig = {
   devIndicators: false,
 
-  // Fix Turbopack workspace root warning — point to this project's directory
-  // (prevents confusion with C:\Users\Pc\package-lock.json)
+  // Fix Turbopack workspace root warning
   turbopack: {
     root: path.resolve(__dirname),
   },
+
+  // Prevent large client-only packages from being bundled on the server
+  serverExternalPackages: [
+    "three",
+    "imapflow",
+    "mailparser",
+    "nodemailer",
+    "mammoth",
+    "pdf-parse",
+  ],
 
   // Optimize for faster navigation
   experimental: {
