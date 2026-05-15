@@ -4,15 +4,17 @@
  * Strategy: Network-first for API calls, Cache-first for static assets.
  */
 
-const CACHE_NAME = "sekpriai-v1";
+const CACHE_NAME = "sekpriai-v2";
+
+// Only cache truly static, public assets — never authenticated routes.
+// Caching /inbox or other app routes causes ERR_FAILED because the SW
+// cannot follow auth redirects during the install phase.
 const STATIC_ASSETS = [
-  "/",
-  "/inbox",
   "/logo.png",
   "/manifest.json",
 ];
 
-// Install — cache static assets
+// Install — cache only public static assets
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -30,7 +32,7 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch — network-first for API, cache-first for static
+// Fetch — network-first for API and app routes, cache-first for static assets only
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -40,22 +42,33 @@ self.addEventListener("fetch", (event) => {
 
   // API routes: network-first, no cache
   if (url.pathname.startsWith("/api/")) {
-    event.respondWith(fetch(request).catch(() => new Response("Offline", { status: 503 })));
+    event.respondWith(
+      fetch(request).catch(() => new Response("Offline", { status: 503 }))
+    );
     return;
   }
 
-  // Static assets: cache-first
+  // App routes (authenticated pages): always network-first, never cache
+  // These require auth cookies and must not be served from cache.
+  const appRoutes = ["/inbox", "/settings", "/memory", "/channels", "/onboarding", "/debug"];
+  if (appRoutes.some((r) => url.pathname.startsWith(r))) {
+    event.respondWith(
+      fetch(request).catch(() => new Response("Offline — please reconnect.", { status: 503 }))
+    );
+    return;
+  }
+
+  // Static assets (logo, manifest, icons): cache-first
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
-        // Cache successful responses for static assets
-        if (response.ok && !url.pathname.startsWith("/_next/")) {
+        if (response.ok && response.type !== "opaqueredirect") {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return response;
-      }).catch(() => caches.match("/") || new Response("Offline", { status: 503 }));
+      }).catch(() => new Response("Offline", { status: 503 }));
     })
   );
 });
