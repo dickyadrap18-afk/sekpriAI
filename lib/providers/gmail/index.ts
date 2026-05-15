@@ -9,6 +9,13 @@ import type {
 } from "../types";
 import { decrypt } from "@/lib/security/crypto";
 import { parseGmailMessage } from "./normalize";
+import {
+  checkDeliverability,
+  sanitizeEmailContent,
+  buildDeliverabilityHeaders,
+  generateMessageId,
+  checkRateLimit,
+} from "@/lib/email/deliverability";
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -111,31 +118,62 @@ export function createGmailAdapter(account: EmailAccount): EmailProviderAdapter 
       return messages;
     },
 
-    async sendMessage(params: SendMessageInput) {
+    async sendMessage(params: SendMessageInput): Promise<SendMessageResult> {
       const token = await ensureToken();
 
-      // Build RFC 2822 MIME message
-      const boundary = `boundary_${Date.now()}`;
+      // ── Rate limit ────────────────────────────────────────────────────
+      if (!checkRateLimit(account.id, 30)) {
+        throw new Error(
+          "Rate limit exceeded: max 30 emails/hour per account. " +
+          "This protects your account from spam flags."
+        );
+      }
+
+      // ── Sanitize + deliverability check ───────────────────────────────
+      const cleanSubject = sanitizeEmailContent(params.subject);
+      const cleanBody = params.bodyText ? sanitizeEmailContent(params.bodyText) : undefined;
+
+      const check = checkDeliverability(cleanSubject, cleanBody || params.bodyHtml || "");
+      if (check.blocked) {
+        throw new Error(
+          `Email blocked — content flagged as spam: ${check.blockedReason}. ` +
+          `Please revise the content and try again.`
+        );
+      }
+      if (check.warnings.length > 0) {
+        console.warn(`[deliverability] score=${check.score} warnings:`, check.warnings);
+      }
+
+      // ── Build RFC 2822 MIME with deliverability headers ───────────────
+      const messageId = generateMessageId(account.email_address);
+      const extraHeaders = buildDeliverabilityHeaders({
+        messageId,
+        fromEmail: account.email_address,
+        inReplyTo: params.inReplyToMessageId,
+        isAiGenerated: params.isAiGenerated,
+      });
+
+      const headerLines = Object.entries(extraHeaders)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\r\n");
+
       const mimeLines = [
+        `From: "${account.display_name || account.email_address}" <${account.email_address}>`,
         `To: ${params.to.join(", ")}`,
         params.cc ? `Cc: ${params.cc.join(", ")}` : "",
-        `Subject: ${params.subject}`,
-        params.inReplyToMessageId
-          ? `In-Reply-To: ${params.inReplyToMessageId}`
-          : "",
-        params.references
-          ? `References: ${params.references.join(" ")}`
-          : "",
+        `Subject: ${cleanSubject}`,
+        params.inReplyToMessageId ? `In-Reply-To: ${params.inReplyToMessageId}` : "",
+        params.references ? `References: ${params.references.join(" ")}` : "",
+        headerLines,
         `MIME-Version: 1.0`,
         `Content-Type: text/plain; charset="UTF-8"`,
         "",
-        params.bodyText || "",
+        cleanBody || params.bodyText || "",
       ]
         .filter(Boolean)
         .join("\r\n");
 
-      const encodedMessage = Buffer.from(mimeLines)
-        .toString("base64url");
+      const encodedMessage = Buffer.from(mimeLines).toString("base64url");
 
       const sendRes = await gmailFetch("/messages/send", token, {
         method: "POST",
@@ -143,7 +181,8 @@ export function createGmailAdapter(account: EmailAccount): EmailProviderAdapter 
       });
 
       if (!sendRes.ok) {
-        throw new Error(`Gmail send failed: ${sendRes.status}`);
+        const errText = await sendRes.text();
+        throw new Error(`Gmail send failed (${sendRes.status}): ${errText.slice(0, 200)}`);
       }
 
       const sendData = await sendRes.json();

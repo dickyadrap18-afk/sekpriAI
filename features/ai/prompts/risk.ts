@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { getAIClient } from "../clients";
 import { SYSTEM_PROMPT } from "./system";
+import { parseWithRetry } from "./parse-with-retry";
 
 const outputSchema = z.object({
   risk_level: z.enum(["low", "medium", "high"]),
@@ -39,26 +40,18 @@ export async function runRisk(input: {
     .replace("{subject}", input.subject)
     .replace("{body}", input.body.slice(0, 1500));
 
+  const messages = [
+    { role: "system" as const, content: SYSTEM_PROMPT },
+    { role: "user" as const, content: userPrompt },
+  ];
+
   const response = await client.chat({
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
+    messages,
     temperature: 0.1,
   });
 
-  try {
-    return outputSchema.parse(JSON.parse(response.text));
-  } catch {
-    const retry = await client.chat({
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-        { role: "assistant", content: response.text },
-        { role: "user", content: "Reformat as valid JSON matching the schema." },
-      ],
-      temperature: 0,
-    });
-    return outputSchema.parse(JSON.parse(retry.text));
-  }
+  return parseWithRetry(client, response.text, outputSchema, [
+    ...messages,
+    { role: "assistant" as const, content: response.text },
+  ]);
 }
