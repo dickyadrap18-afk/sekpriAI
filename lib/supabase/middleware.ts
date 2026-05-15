@@ -4,15 +4,22 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function updateSession(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // ── /auth/callback — let the route handler deal with it untouched ─────────
+  // Do NOT call getUser() here — it would consume the PKCE verifier cookie
+  // before exchangeCodeForSession() in the route handler gets a chance to use it.
+  if (pathname === "/auth/callback") {
+    return NextResponse.next({ request });
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   // ── OAuth code forwarding ──────────────────────────────────────────────────
   // Supabase redirects back to the Site URL with ?code=... appended.
   // If the code lands on any page other than /auth/callback, forward it there
   // so exchangeCodeForSession() runs in the right server-side handler.
   const code = searchParams.get("code");
-  if (code && pathname !== "/auth/callback") {
+  if (code) {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
-    // Keep only the code (and optional next) — drop everything else
     callbackUrl.search = "";
     callbackUrl.searchParams.set("code", code);
     const next = searchParams.get("next");
@@ -44,30 +51,15 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // getUser() returns { data: { user }, error } — never throws.
-  // "Invalid Refresh Token" comes back as error.code === 'refresh_token_not_found'
-  // Treat it as unauthenticated and clear stale cookies silently.
   const { data: { user }, error } = await supabase.auth.getUser();
 
   // If refresh token is invalid/expired, clear stale sb- cookies
-  // so the browser stops retrying with the bad token.
   if (error && (error as { code?: string }).code === "refresh_token_not_found") {
     const response = NextResponse.next({ request });
     request.cookies.getAll().forEach(({ name }) => {
-      if (name.startsWith("sb-")) {
-        response.cookies.delete(name);
-      }
+      if (name.startsWith("sb-")) response.cookies.delete(name);
     });
-    // Redirect to login only if not already on a public route
-    const isPublic =
-      pathname === "/" ||
-      pathname === "/login" ||
-      pathname === "/signup" ||
-      pathname === "/onboarding" ||
-      pathname === "/auth/callback" ||
-      pathname.startsWith("/api/") ||
-      pathname.startsWith("/privacy") ||
-      pathname.startsWith("/terms");
+    const isPublic = isPublicPath(pathname);
     if (!isPublic) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
@@ -80,17 +72,7 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  const isPublicRoute =
-    pathname === "/" ||
-    pathname === "/login" ||
-    pathname === "/signup" ||
-    pathname === "/onboarding" ||
-    pathname === "/auth/callback" ||
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/privacy") ||
-    pathname.startsWith("/terms");
-
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -103,4 +85,18 @@ export async function updateSession(request: NextRequest) {
   }
 
   return supabaseResponse;
+}
+
+function isPublicPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/onboarding" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms")
+  );
 }
