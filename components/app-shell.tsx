@@ -15,6 +15,7 @@ import {
 import { signOut } from "@/app/(app)/actions";
 import { AmbientBg } from "@/components/ambient-bg";
 import { useUnreadCounts } from "@/features/email/hooks/use-unread-counts";
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 
 interface AppShellProps {
   user: User;
@@ -62,6 +63,9 @@ export function AppShell({ user, children }: AppShellProps) {
 
       {/* ── Ambient background ── */}
       <AmbientBg />
+
+      {/* PWA install banner */}
+      <PWAInstallPrompt />
 
       {/* Mobile overlay */}
       <AnimatePresence>

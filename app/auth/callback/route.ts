@@ -12,10 +12,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", appUrl));
   }
 
-  // The response object must be created BEFORE the Supabase client so that
-  // setAll() can write session cookies onto the same response that gets returned.
-  const redirectTo = new URL(next.startsWith("/") ? next : `/${next}`, appUrl);
-  const response = NextResponse.redirect(redirectTo);
+  // Response must be created before the Supabase client so setAll() can
+  // write session cookies onto the same response object that gets returned.
+  // We'll update the redirect target after we know if this is a new user.
+  const response = NextResponse.redirect(new URL("/inbox", appUrl));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,11 +23,9 @@ export async function GET(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          // Read cookies from the incoming request (includes PKCE verifier)
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Write session cookies onto the redirect response
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
           });
@@ -46,5 +44,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errUrl);
   }
 
-  return response;
+  // Detect new users by checking user_metadata.onboarding_done.
+  // On first OAuth login this flag is absent → send to onboarding.
+  // On subsequent logins it's true → send to inbox (or requested next).
+  const { data: { user } } = await supabase.auth.getUser();
+  const onboardingDone = user?.user_metadata?.onboarding_done === true;
+
+  const destination = onboardingDone
+    ? (next.startsWith("/") ? next : `/${next}`)
+    : "/onboarding";
+
+  return NextResponse.redirect(new URL(destination, appUrl));
 }
