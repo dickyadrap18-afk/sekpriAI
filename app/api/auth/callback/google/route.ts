@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     "https://www.googleapis.com/oauth2/v2/userinfo",
     { headers: { Authorization: `Bearer ${tokens.access_token}` } }
   );
-  await profileRes.json(); // Consume response but don't need profile data for ID token flow
+  const profile = await profileRes.json();
 
   // Create Supabase client
   const response = NextResponse.redirect(new URL("/inbox", request.url));
@@ -70,17 +70,66 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  // Sign in or sign up with Google OAuth
-  const { error: authError } = await supabase.auth.signInWithIdToken({
+  // Try to sign in with ID token first (requires Supabase Google provider enabled)
+  const { data: idTokenData, error: idTokenError } = await supabase.auth.signInWithIdToken({
     provider: "google",
     token: tokens.id_token,
   });
 
-  if (authError) {
-    console.error("Google OAuth error:", authError);
-    return NextResponse.redirect(
-      new URL("/login?error=google_auth_failed", request.url)
-    );
+  // If ID token sign-in fails, try to find or create user with email
+  if (idTokenError) {
+    console.log("ID token sign-in failed, trying email-based auth:", idTokenError.message);
+    
+    // Check if user exists
+    const { data: existingUser } = await supabase
+      .from("auth.users")
+      .select("id")
+      .eq("email", profile.email)
+      .single();
+
+    if (existingUser) {
+      // User exists, create a session manually
+      // This is a fallback - ideally Supabase Google provider should be configured
+      return NextResponse.redirect(
+        new URL("/login?error=google_auth_config_required", request.url)
+      );
+    } else {
+      // Create new user via email signup with a random password
+      // User can reset password later if needed
+      const randomPassword = crypto.randomUUID();
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: profile.email,
+        password: randomPassword,
+        options: {
+          data: {
+            full_name: profile.name,
+            avatar_url: profile.picture,
+            provider: "google",
+          },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/inbox`,
+        },
+      });
+
+      if (signUpError) {
+        console.error("Signup error:", signUpError);
+        return NextResponse.redirect(
+          new URL("/login?error=google_auth_failed", request.url)
+        );
+      }
+
+      // Sign in the newly created user
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: randomPassword,
+      });
+
+      if (signInError) {
+        console.error("Sign in error:", signInError);
+        return NextResponse.redirect(
+          new URL("/login?error=google_auth_failed", request.url)
+        );
+      }
+    }
   }
 
   return response;

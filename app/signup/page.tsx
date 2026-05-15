@@ -42,14 +42,25 @@ function SignupForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/signup/google");
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
+        },
+      });
+
+      if (error) {
         setError("Failed to initiate Google signup.");
         setLoading(false);
       }
+      // If no error, user will be redirected to Google
     } catch {
       setError("Network error. Please check your connection.");
       setLoading(false);

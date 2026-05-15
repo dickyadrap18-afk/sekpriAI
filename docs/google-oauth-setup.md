@@ -26,11 +26,11 @@ This guide explains how to configure Google OAuth for both:
   - `http://localhost:3000` (development)
   - `https://your-domain.com` (production)
 - **Authorized redirect URIs**:
-  - `http://localhost:3000/api/auth/callback/google` (user auth)
-  - `http://localhost:3000/api/auth/callback/gmail` (Gmail integration)
-  - `https://your-domain.com/api/auth/callback/google` (production user auth)
-  - `https://your-domain.com/api/auth/callback/gmail` (production Gmail)
-  - `https://your-supabase-project.supabase.co/auth/v1/callback` (Supabase)
+  - `http://localhost:3000/auth/callback` (Supabase OAuth callback - development)
+  - `http://localhost:3000/api/auth/callback/gmail` (Gmail integration - development)
+  - `https://your-domain.com/auth/callback` (Supabase OAuth callback - production)
+  - `https://your-domain.com/api/auth/callback/gmail` (Gmail integration - production)
+  - `https://your-supabase-project.supabase.co/auth/v1/callback` (Supabase direct)
 
 ### OAuth Consent Screen
 Configure the OAuth consent screen with:
