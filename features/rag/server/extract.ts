@@ -30,9 +30,7 @@ export async function extractText(
 
   if (mimeType === "application/pdf" || filename.endsWith(".pdf")) {
     try {
-      const { default: pdfParse } = await import("pdf-parse") as {
-        default: (buf: Buffer) => Promise<{ text: string }>;
-      };
+      const pdfParse = (await import("pdf-parse") as unknown as { default: (buf: Buffer) => Promise<{ text: string }> }).default;
       const result = await pdfParse(content);
       return result.text || null;
     } catch (err) {

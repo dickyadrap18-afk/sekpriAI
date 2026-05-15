@@ -153,7 +153,7 @@ export function InboxToolbar({ filters, onFiltersChange, accounts, onRefresh }: 
         {accounts.length > 0 && (
           <AccountSwitcher
             accounts={accounts}
-            selectedId={filters.account_id}
+            selectedId={filters.account_id ?? undefined}
             onSelect={(id) => onFiltersChange({ ...filters, account_id: id })}
           />
         )}

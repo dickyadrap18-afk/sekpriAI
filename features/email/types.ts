@@ -20,17 +20,18 @@ export interface MessageListItem {
   snippet: string | null;
   received_at: string;
   is_read: boolean;
-  is_starred: boolean;
+  is_starred?: boolean;
   labels: string[];
-  ai_summary: string | null;
+  ai_summary?: string | null;
   ai_priority: "high" | "medium" | "low" | null;
-  folder: string;
+  folder?: string;
+  provider?: string;
 }
 
 export interface ComposeFormData {
   from_account_id: string;
   to: string;
-  cc: string;
+  cc?: string;
   subject: string;
   body: string;
   in_reply_to_message_id?: string;
@@ -43,7 +44,7 @@ export type ComposeMode = "new" | "reply" | "forward";
 
 export interface InboxFilters {
   folder?: string;
-  accountId?: string | null;
+  account_id?: string | null;
   search?: string;
   priority?: string;
   label?: string;
