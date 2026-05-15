@@ -82,17 +82,28 @@ export function MemoryView() {
     setEditingId(null);
   }
 
+  const tabKeys: Tab[] = ["pending", "active", "rejected"];
+
+  function handleTabKeyDown(e: React.KeyboardEvent, currentTab: Tab) {
+    const idx = tabKeys.indexOf(currentTab);
+    if (e.key === "ArrowRight") { e.preventDefault(); setTab(tabKeys[(idx + 1) % tabKeys.length]); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); setTab(tabKeys[(idx - 1 + tabKeys.length) % tabKeys.length]); }
+  }
+
   return (
     <div className="space-y-5">
       {/* Tabs */}
-      <div className="flex gap-0.5" role="tablist"
+      <div className="flex gap-0.5" role="tablist" aria-label="Memory status filter"
         style={{ borderBottom: "1px solid rgba(201,169,110,0.08)" }}>
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
+            onKeyDown={(e) => handleTabKeyDown(e, t.key)}
             role="tab"
+            id={`tab-${t.key}`}
             aria-selected={tab === t.key}
+            aria-controls={`tabpanel-${t.key}`}
             className={cn(
               "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all",
               tab === t.key
@@ -106,7 +117,11 @@ export function MemoryView() {
       </div>
 
       {/* Content */}
-      <div role="tabpanel">
+      <div
+        role="tabpanel"
+        id={`tabpanel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+      >
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (

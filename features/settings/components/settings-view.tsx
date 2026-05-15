@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Mail, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { ConnectImapDialog } from "./connect-imap-dialog";
 import { ProviderIcon } from "./provider-icon";
@@ -65,20 +66,38 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
   const [accounts, setAccounts] = useState<AccountRow[]>(initialAccounts);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
-  // Fetch accounts client-side if not provided (e.g., when navigating directly)
+  // Handle OAuth callback messages
   useEffect(() => {
-    if (initialAccounts.length > 0) return;
-    async function load() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("email_accounts")
-        .select("id, provider, email_address, display_name, sync_status, last_synced_at, created_at")
-        .order("created_at", { ascending: true });
-      if (data) setAccounts(data as AccountRow[]);
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+    if (success === "gmail_connected") {
+      showToast("Gmail connected successfully", "success");
+      // Reload accounts to show the new one
+      loadAccounts();
+    } else if (error) {
+      const messages: Record<string, string> = {
+        gmail_auth_failed: "Gmail authentication failed. Please try again.",
+        gmail_token_exchange_failed: "Failed to exchange Gmail token. Please try again.",
+        gmail_auth_invalid_state: "Invalid OAuth state. Please try again.",
+      };
+      showToast(messages[error] || "Connection failed", "error");
     }
-    load();
-  }, [initialAccounts.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function loadAccounts() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("email_accounts")
+      .select("id, provider, email_address, display_name, sync_status, last_synced_at, created_at")
+      .order("created_at", { ascending: true });
+    if (data) setAccounts(data as AccountRow[]);
+  }
+
+  // Load accounts on mount
+  useEffect(() => { loadAccounts(); }, []);
 
   async function handleDelete(id: string) {
     if (!confirm("Remove this account? This will also delete all synced messages.")) return;
@@ -122,6 +141,35 @@ export function SettingsView({ initialAccounts }: SettingsViewProps) {
           >
             <Plus className="h-3.5 w-3.5" />
             Add Account
+          </button>
+        </div>
+
+        {/* OAuth quick-connect buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <a
+            href="/api/auth/connect/gmail"
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-all hover:scale-[1.01]"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            {/* Gmail SVG */}
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <rect width="32" height="32" rx="16" fill="#fff"/>
+              <path d="M5 10.5v11A1.5 1.5 0 0 0 6.5 23h19A1.5 1.5 0 0 0 27 21.5v-11L16 18 5 10.5Z" fill="#EA4335"/>
+              <path d="M5 10.5 16 18l11-7.5V9A1.5 1.5 0 0 0 25.5 7.5h-19A1.5 1.5 0 0 0 5 9v1.5Z" fill="#FBBC05"/>
+              <path d="M5 10.5V9A1.5 1.5 0 0 1 6.5 7.5H16v10.5L5 10.5Z" fill="#34A853"/>
+              <path d="M27 10.5V9A1.5 1.5 0 0 0 25.5 7.5H16v10.5l11-7.5Z" fill="#4285F4"/>
+            </svg>
+            <span className="text-white/70">Connect Gmail</span>
+            <span className="ml-auto text-[10px] text-white/25">OAuth</span>
+          </a>
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-all hover:scale-[1.01]"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <Mail className="h-5 w-5 text-white/30" />
+            <span className="text-white/70">IMAP / Other</span>
+            <span className="ml-auto text-[10px] text-white/25">Password</span>
           </button>
         </div>
 
