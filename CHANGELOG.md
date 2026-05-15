@@ -6,6 +6,74 @@ Format: `[date] type: description` — types: `feat`, `fix`, `style`, `refactor`
 
 ---
 
+## [2026-05-15]
+
+### feat: Google OAuth — signup & login with Google
+**Files:** `app/login/page.tsx`, `app/signup/page.tsx`, `app/auth/callback/route.ts` (new), `lib/supabase/middleware.ts`
+
+- Added "Continue with Google" button on both `/login` and `/signup` pages
+- Uses Supabase built-in `signInWithOAuth({ provider: "google" })` — no custom token exchange
+- `redirectTo` set to `${origin}/auth/callback` so Supabase knows where to send the code
+- New route `app/auth/callback/route.ts` handles `exchangeCodeForSession(code)` server-side, sets session cookies, then redirects to `/inbox`
+- Both login and signup share the same callback route — Google OAuth is idempotent (creates user on first use, signs in on subsequent uses)
+
+### fix: OAuth code landing on wrong page — middleware forwarding
+**File:** `lib/supabase/middleware.ts`
+
+- Supabase was sending `?code=` to the Site URL (`/`) which redirected to `/login?code=...`
+- Middleware now intercepts any request carrying `?code=` on a non-callback path and forwards it to `/auth/callback?code=...`
+- Ensures `exchangeCodeForSession` always runs in the correct server-side handler regardless of where Supabase lands
+
+### fix: PKCE verifier destroyed by middleware before callback
+**File:** `lib/supabase/middleware.ts`
+
+- Root cause of `auth_callback_failed`: middleware was calling `supabase.auth.getUser()` on every request including `/auth/callback`, which consumed the PKCE code verifier cookie before `exchangeCodeForSession` could use it
+- Fix: middleware now returns `NextResponse.next()` immediately for `/auth/callback` without touching Supabase at all — the route handler owns that request entirely
+- Also extracted `isPublicPath()` helper to deduplicate the public route check
+
+### fix: Service worker redirect error blocking SW registration
+**File:** `proxy.ts`
+
+- `sw.js` was matched by the middleware and redirected to `/login` (unauthenticated request)
+- Browser rejects service workers served via redirect with `SecurityError`
+- Fix: added `sw\\.js`, `workbox-.*`, `manifest\\.json`, and font file extensions to the middleware matcher exclusion list
+
+### fix: `/inbox` ERR_FAILED after login
+**File:** `public/sw.js`
+
+- Old SW cached `/inbox` during the install phase — but `/inbox` requires auth and returns a redirect, which the SW cannot follow → `ERR_FAILED`
+- Fix: removed all authenticated routes (`/inbox`, `/settings`, `/memory`, etc.) from `STATIC_ASSETS`
+- App routes now use network-first strategy (never cached)
+- Only truly public assets cached: `/logo.png`, `/manifest.json`
+- Cache version bumped `v1` → `v2` to force old SW replacement on next visit
+
+### feat: Privacy Policy and Terms of Service pages
+**Files:** `app/privacy/page.tsx` (new), `app/terms/page.tsx` (new), `app/page.tsx`
+
+- Required for Google OAuth consent screen verification
+- Privacy Policy covers: data collection, AI processing disclosure, Google API Services User Data Policy compliance, security measures, user rights
+- Terms of Service covers: service description, email access permissions, AI limitations, acceptable use, liability disclaimers
+- Both pages match the app's black/gold brand theme
+- Footer links added to homepage (`/privacy`, `/terms`)
+
+### feat: `/auth/callback` OAuth route
+**File:** `app/auth/callback/route.ts` (new)
+
+- Standard Supabase PKCE callback handler
+- Reads `code` from query params, calls `exchangeCodeForSession`, writes session cookies onto the redirect response
+- On error: redirects to `/login?error=auth_callback_failed&reason=<message>` for easier debugging
+- On success: redirects to `next` param (default `/inbox`)
+
+### refactor: AI prompts — eliminate duplicate parse/retry logic
+**Files:** `features/ai/prompts/draft-reply.ts`, `features/ai/prompts/extract-memory.ts`, `features/ai/prompts/parse-channel-intent.ts`, `features/ai/prompts/priority.ts`, `features/ai/prompts/risk.ts`
+
+- All five prompt modules had identical inline try/catch + retry blocks (~50 lines each)
+- Refactored to use the existing `parseWithRetry<T>()` utility (`features/ai/prompts/parse-with-retry.ts`)
+- Each module now builds a `messages` array, calls `client.chat()`, then passes result to `parseWithRetry`
+- Ref: audit-report.md CQ-04
+
+---
+
 ## [2026-05-14]
 
 ### feat: Telegram webhook registration script
